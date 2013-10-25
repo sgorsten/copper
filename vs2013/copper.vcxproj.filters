@@ -12,6 +12,9 @@
     <ClInclude Include="..\include\cu\json.h">
       <Filter>cu</Filter>
     </ClInclude>
+    <ClInclude Include="..\include\cu\math.h">
+      <Filter>cu</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\copper\json.cpp">

@@ -1,3 +1,4 @@
+#include "cu/math.h"
 #include "cu/json.h"
 #include <iostream>
 
@@ -5,6 +6,13 @@ using namespace cu;
 
 int main()
 {
+	// We have convenient linear algebra types available
+	float3x4 a = mul(float3x2(), float2x4()) + float3x4();
+	float4x2 b = mul(float4x3(), float3x2()) - float4x2();
+	float2x3 c = mul(float2x4(), float4x3()) * 2.0f;
+	float4x4 d = mul(float4x4(), float4x4()) / 3.0f;
+	float2x4 e = transpose(float4x2());
+
 	// We can parse JSON from a string
 	auto parsed_value = json::parse(R"(
 	{
