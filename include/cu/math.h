@@ -42,32 +42,32 @@ namespace cu
 		template<class F> vec	apply(T r, F f) const				{ return {f(x,r), f(y,r), f(z,r), f(w,r)}; }
 	};
 
-	template<class T, int M> vec<T,M>   operator +  (const vec<T,M> & a, const vec<T,M> & b)      { return a.apply(b, std::plus      <T>()); }
-	template<class T, int M> vec<T,M>   operator -  (const vec<T,M> & a, const vec<T,M> & b)      { return a.apply(b, std::minus     <T>()); }
-	template<class T, int M> vec<T,M>   operator *  (const vec<T,M> & a, const vec<T,M> & b)      { return a.apply(b, std::multiplies<T>()); }
-	template<class T, int M> vec<T,M>   operator /  (const vec<T,M> & a, const vec<T,M> & b)      { return a.apply(b, std::divides   <T>()); }
-	template<class T, int M> vec<T,M>   operator +  (const vec<T,M> & a, T b)                     { return a.apply(b, std::plus      <T>()); }
-	template<class T, int M> vec<T,M>   operator -  (const vec<T,M> & a, T b)                     { return a.apply(b, std::minus     <T>()); }
-	template<class T, int M> vec<T,M>   operator *  (const vec<T,M> & a, T b)                     { return a.apply(b, std::multiplies<T>()); }
-	template<class T, int M> vec<T,M>   operator /  (const vec<T,M> & a, T b)                     { return a.apply(b, std::divides   <T>()); }
-	template<class T, int M> vec<T,M> & operator += (vec<T,M> & a, const vec<T,M> & b)            { return a=a+b; }
-	template<class T, int M> vec<T,M> & operator -= (vec<T,M> & a, const vec<T,M> & b)            { return a=a-b; }
-	template<class T, int M> vec<T,M> & operator *= (vec<T,M> & a, const vec<T,M> & b)            { return a=a*b; }
-	template<class T, int M> vec<T,M> & operator /= (vec<T,M> & a, const vec<T,M> & b)            { return a=a/b; }
-	template<class T, int M> vec<T,M> & operator += (vec<T,M> & a, T b)                           { return a=a+b; }
-	template<class T, int M> vec<T,M> & operator -= (vec<T,M> & a, T b)                           { return a=a-b; }
-	template<class T, int M> vec<T,M> & operator *= (vec<T,M> & a, T b)                           { return a=a*b; }
-	template<class T, int M> vec<T,M> & operator /= (vec<T,M> & a, T b)                           { return a=a/b; }
+	template<class T, int M> auto operator + (const vec<T,M> & a, const vec<T,M> & b) -> vec<T,M> { return a.apply(b, std::plus      <T>()); }
+	template<class T, int M> auto operator - (const vec<T,M> & a, const vec<T,M> & b) -> vec<T,M> { return a.apply(b, std::minus     <T>()); }
+	template<class T, int M> auto operator * (const vec<T,M> & a, const vec<T,M> & b) -> vec<T,M> { return a.apply(b, std::multiplies<T>()); }
+	template<class T, int M> auto operator / (const vec<T,M> & a, const vec<T,M> & b) -> vec<T,M> { return a.apply(b, std::divides   <T>()); }
+	template<class T, int M> auto operator + (const vec<T,M> & a, T b) -> vec<T,M>                { return a.apply(b, std::plus      <T>()); }
+	template<class T, int M> auto operator - (const vec<T,M> & a, T b) -> vec<T,M>                { return a.apply(b, std::minus     <T>()); }
+	template<class T, int M> auto operator * (const vec<T,M> & a, T b) -> vec<T,M>                { return a.apply(b, std::multiplies<T>()); }
+	template<class T, int M> auto operator / (const vec<T,M> & a, T b) -> vec<T,M>                { return a.apply(b, std::divides   <T>()); }
+	template<class T, int M> auto operator += (vec<T,M> & a, const vec<T,M> & b) -> vec<T,M> &    { return a=a+b; }
+	template<class T, int M> auto operator -= (vec<T,M> & a, const vec<T,M> & b) -> vec<T,M> &    { return a=a-b; }
+	template<class T, int M> auto operator *= (vec<T,M> & a, const vec<T,M> & b) -> vec<T,M> &    { return a=a*b; }
+	template<class T, int M> auto operator /= (vec<T,M> & a, const vec<T,M> & b) -> vec<T,M> &    { return a=a/b; }
+	template<class T, int M> auto operator += (vec<T,M> & a, T b) -> vec<T,M> &                   { return a=a+b; }
+	template<class T, int M> auto operator -= (vec<T,M> & a, T b) -> vec<T,M> &                   { return a=a-b; }
+	template<class T, int M> auto operator *= (vec<T,M> & a, T b) -> vec<T,M> &                   { return a=a*b; }
+	template<class T, int M> auto operator /= (vec<T,M> & a, T b) -> vec<T,M> &                   { return a=a/b; }
 
-	template<class T>        T          dot         (const vec<T,2> & a, const vec<T,2> & b)      { return a.x*b.x + a.y*b.y; }
-	template<class T>        T          dot         (const vec<T,3> & a, const vec<T,3> & b)      { return a.x*b.x + a.y*b.y + a.z*b.z; }
-	template<class T>        T          dot         (const vec<T,4> & a, const vec<T,4> & b)      { return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w; }
-	template<class T, int M> vec<T,M>   lerp        (const vec<T,4> & a, const vec<T,4> & b, T t) { return a*(1-t) + b*t; }
-	template<class T, int M> T          mag         (const vec<T,M> & a)                          { return sqrt(mag2(a)); }
-	template<class T, int M> T          mag2        (const vec<T,M> & a)                          { return dot(a,a); }
-	template<class T, int M> vec<T,M>   max         (const vec<T,M> & a, const vec<T,M> & b)      { return a.apply(b, std::max<T>); }
-	template<class T, int M> vec<T,M>   min         (const vec<T,M> & a, const vec<T,M> & b)      { return a.apply(b, std::min<T>); }
-	template<class T, int M> vec<T,M>   norm        (const vec<T,M> & a)                          { return a/mag(a); }
+	template<class T>        auto dot (const vec<T,2> & a, const vec<T,2> & b) -> T               { return a.x*b.x + a.y*b.y; }
+	template<class T>        auto dot (const vec<T,3> & a, const vec<T,3> & b) -> T               { return a.x*b.x + a.y*b.y + a.z*b.z; }
+	template<class T>        auto dot (const vec<T,4> & a, const vec<T,4> & b) -> T               { return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w; }
+	template<class T, int M> auto lerp(const vec<T,4> & a, const vec<T,4> & b, T t) -> vec<T,M>   { return a*(1-t) + b*t; }
+	template<class T, int M> auto mag (const vec<T,M> & a) -> T                                   { return sqrt(mag2(a)); }
+	template<class T, int M> auto mag2(const vec<T,M> & a) -> T                                   { return dot(a,a); }
+	template<class T, int M> auto max (const vec<T,M> & a, const vec<T,M> & b) -> vec<T,M>        { return a.apply(b, std::max<T>); }
+	template<class T, int M> auto min (const vec<T,M> & a, const vec<T,M> & b) -> vec<T,M>        { return a.apply(b, std::min<T>); }
+	template<class T, int M> auto norm(const vec<T,M> & a) -> vec<T,M>                            { return a/mag(a); }
 
 	template<class T, int M, int N> struct mat;
 	template<class T, int M> struct mat<T,M,2>
@@ -113,22 +113,22 @@ namespace cu
 		template<class F> mat	apply(T r, F f) const				{ return {x.apply(r,f), y.apply(r,f), z.apply(r,f), w.apply(r,f)}; }
 	};
 
-	template<class T, int M, int N> mat<T,M,N>   operator +  (const mat<T,M,N> & a, const mat<T,M,N> & b) { return a.apply(b, std::plus      <T>()); }
-	template<class T, int M, int N> mat<T,M,N>   operator -  (const mat<T,M,N> & a, const mat<T,M,N> & b) { return a.apply(b, std::minus     <T>()); }
-	template<class T, int M, int N> mat<T,M,N>   operator *  (const mat<T,M,N> & a, const mat<T,M,N> & b) { return a.apply(b, std::multiplies<T>()); }
-	template<class T, int M, int N> mat<T,M,N>   operator /  (const mat<T,M,N> & a, const mat<T,M,N> & b) { return a.apply(b, std::divides   <T>()); }
-	template<class T, int M, int N> mat<T,M,N>   operator +  (const mat<T,M,N> & a, T b) { return a.apply(b, std::plus      <T>()); }
-	template<class T, int M, int N> mat<T,M,N>   operator -  (const mat<T,M,N> & a, T b) { return a.apply(b, std::minus     <T>()); }
-	template<class T, int M, int N> mat<T,M,N>   operator *  (const mat<T,M,N> & a, T b) { return a.apply(b, std::multiplies<T>()); }
-	template<class T, int M, int N> mat<T,M,N>   operator /  (const mat<T,M,N> & a, T b) { return a.apply(b, std::divides   <T>()); }
-	template<class T, int M, int N> mat<T,M,N> & operator += (mat<T,M,N> & a, const mat<T,M,N> & b) { return a=a+b; }
-	template<class T, int M, int N> mat<T,M,N> & operator -= (mat<T,M,N> & a, const mat<T,M,N> & b) { return a=a-b; }
-	template<class T, int M, int N> mat<T,M,N> & operator *= (mat<T,M,N> & a, const mat<T,M,N> & b) { return a=a*b; }
-	template<class T, int M, int N> mat<T,M,N> & operator /= (mat<T,M,N> & a, const mat<T,M,N> & b) { return a=a/b; }
-	template<class T, int M, int N> mat<T,M,N> & operator += (mat<T,M,N> & a, T b) { return a=a+b; }
-	template<class T, int M, int N> mat<T,M,N> & operator -= (mat<T,M,N> & a, T b) { return a=a-b; }
-	template<class T, int M, int N> mat<T,M,N> & operator *= (mat<T,M,N> & a, T b) { return a=a*b; }
-	template<class T, int M, int N> mat<T,M,N> & operator /= (mat<T,M,N> & a, T b) { return a=a/b; }
+	template<class T, int M, int N> auto operator + (const mat<T,M,N> & a, const mat<T,M,N> & b) -> mat<T,M,N> { return a.apply(b, std::plus      <T>()); }
+	template<class T, int M, int N> auto operator - (const mat<T,M,N> & a, const mat<T,M,N> & b) -> mat<T,M,N> { return a.apply(b, std::minus     <T>()); }
+	template<class T, int M, int N> auto operator * (const mat<T,M,N> & a, const mat<T,M,N> & b) -> mat<T,M,N> { return a.apply(b, std::multiplies<T>()); }
+	template<class T, int M, int N> auto operator / (const mat<T,M,N> & a, const mat<T,M,N> & b) -> mat<T,M,N> { return a.apply(b, std::divides   <T>()); }
+	template<class T, int M, int N> auto operator + (const mat<T,M,N> & a, T b) -> mat<T,M,N>                  { return a.apply(b, std::plus      <T>()); }
+	template<class T, int M, int N> auto operator - (const mat<T,M,N> & a, T b) -> mat<T,M,N>                  { return a.apply(b, std::minus     <T>()); }
+	template<class T, int M, int N> auto operator * (const mat<T,M,N> & a, T b) -> mat<T,M,N>                  { return a.apply(b, std::multiplies<T>()); }
+	template<class T, int M, int N> auto operator / (const mat<T,M,N> & a, T b) -> mat<T,M,N>                  { return a.apply(b, std::divides   <T>()); }
+	template<class T, int M, int N> auto operator += (mat<T,M,N> & a, const mat<T,M,N> & b) -> mat<T,M,N> &    { return a=a+b; }
+	template<class T, int M, int N> auto operator -= (mat<T,M,N> & a, const mat<T,M,N> & b) -> mat<T,M,N> &    { return a=a-b; }
+	template<class T, int M, int N> auto operator *= (mat<T,M,N> & a, const mat<T,M,N> & b) -> mat<T,M,N> &    { return a=a*b; }
+	template<class T, int M, int N> auto operator /= (mat<T,M,N> & a, const mat<T,M,N> & b) -> mat<T,M,N> &    { return a=a/b; }
+	template<class T, int M, int N> auto operator += (mat<T,M,N> & a, T b) -> mat<T,M,N> &                     { return a=a+b; }
+	template<class T, int M, int N> auto operator -= (mat<T,M,N> & a, T b) -> mat<T,M,N> &                     { return a=a-b; }
+	template<class T, int M, int N> auto operator *= (mat<T,M,N> & a, T b) -> mat<T,M,N> &                     { return a=a*b; }
+	template<class T, int M, int N> auto operator /= (mat<T,M,N> & a, T b) -> mat<T,M,N> &                     { return a=a/b; }
 
 	template<class T> mat<T,2,2> adj(const mat<T,2,2> & a) { return {{a.y.y, -a.x.y}, {-a.y.x, a.x.x}}; }
 	template<class T> mat<T,3,3> adj(const mat<T,3,3> & a) { return {{a.y.y*a.z.z - a.z.y*a.y.z, a.z.y*a.x.z - a.x.y*a.z.z, a.x.y*a.y.z - a.y.y*a.x.z},
