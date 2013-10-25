@@ -69,6 +69,14 @@ namespace cu
 	template<class T, int M> auto min (const vec<T,M> & a, const vec<T,M> & b) -> vec<T,M>        { return a.apply(b, std::min<T>); }
 	template<class T, int M> auto norm(const vec<T,M> & a) -> vec<T,M>                            { return a/mag(a); }
 
+	template<class T> vec<T,4> qconj       (const vec<T,4> & q)                     { return {-q.x,-q.y,-q.z,q.w}; }
+	template<class T> vec<T,4> qmul        (const vec<T,4> & a, const vec<T,4> & b) { return {a.x*b.w+a.w*b.x+a.y*b.z-a.z*b.y, a.y*b.w+a.w*b.y+a.z*b.x-a.x*b.z, a.z*b.w+a.w*b.z+a.x*b.y-a.y*b.x, a.w*b.w-a.x*b.x-a.y*b.y-a.z*b.z}; }
+	template<class T> vec<T,4> qrotation   (const vec<T,3> & axis, T angle)         { return {axis * sin(angle/2), cos(angle/2)}; }
+	template<class T> vec<T,3> qtransform  (const vec<T,4> & q, const vec<T,3> & v) { return qxdir(q)*v.x + qydir(q)*v.y + qzdir(q)*v.z; } // qvq*	
+	template<class T> vec<T,3> qxdir       (const vec<T,4> & q)                     { return {q.w*q.w+q.x*q.x-q.y*q.y-q.z*q.z, (q.x*q.y+q.z*q.w)*2, (q.z*q.x-q.y*q.w)*2}; } // qtransform(q,(1,0,0))
+	template<class T> vec<T,3> qydir       (const vec<T,4> & q)                     { return {(q.x*q.y-q.z*q.w)*2, q.w*q.w-q.x*q.x+q.y*q.y-q.z*q.z, (q.y*q.z+q.x*q.w)*2}; } // qtransform(q,(0,1,0))
+	template<class T> vec<T,3> qzdir       (const vec<T,4> & q)                     { return {(q.z*q.x+q.y*q.w)*2, (q.y*q.z-q.x*q.w)*2, q.w*q.w-q.x*q.x-q.y*q.y+q.z*q.z}; } // qtransform(q,(0,0,1))		
+
 	template<class T, int M, int N> struct mat;
 	template<class T, int M> struct mat<T,M,2>
 	{
