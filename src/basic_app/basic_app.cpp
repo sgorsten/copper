@@ -12,6 +12,11 @@ int main()
 	float2x3 c = mul(float2x4(), float4x3()) * 2.0f;
 	float4x4 d = mul(float4x4(), float4x4()) / 3.0f;
 	float2x4 e = transpose(float4x2());
+	auto x = 0.6f, y = 0.8f;
+	auto f = inv(float2x2{{x,-y}, {y,x}});
+	auto g = inv(float3x3{{x,0,-y}, {0,1,0}, {y,0,x}});
+	auto h = inv(float4x4{{1,0,0,0}, {0,x,0,-y}, {0,0,1,0}, {0,y,0,x}});
+	float4x4 i = {{g.x,0}, {g.y,0}, {g.z,0}, {0,0,0,1}};
 
 	// We can parse JSON from a string
 	auto parsed_value = json::parse(R"(

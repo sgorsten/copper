@@ -15,28 +15,31 @@ namespace cu
 								vec(T x, T y)						: x(x), y(y) {}
 		T &						operator [] (int i)					{ return (&x)[i]; } // v[i] retrieves the i'th row
 		const T &				operator [] (int i) const			{ return (&x)[i]; } // v[i] retrieves the i'th row 
-		template<class F> vec	apply(const vec & r, F f) const		{ return vec(f(x,r.x), f(y,r.y)); }
-		template<class F> vec	apply(T r, F f) const				{ return vec(f(x,r), f(y,r)); }
+		template<class F> vec	apply(const vec & r, F f) const		{ return {f(x,r.x), f(y,r.y)}; }
+		template<class F> vec	apply(T r, F f) const				{ return {f(x,r), f(y,r)}; }
 	};
 	template<class T> struct vec<T,3>
 	{
 		T						x, y, z;
 								vec()								: x(), y(), z() {}
 								vec(T x, T y, T z)					: x(x), y(y), z(z) {}
+								vec(const vec<T,2> & xy, T z)       : vec(xy.x, xy.y, z) {}
 		T &						operator [] (int i)					{ return (&x)[i]; } // v[i] retrieves the i'th row
 		const T &				operator [] (int i) const			{ return (&x)[i]; } // v[i] retrieves the i'th row 
-		template<class F> vec	apply(const vec & r, F f) const		{ return vec(f(x,r.x), f(y,r.y), f(z,r.z)); }
-		template<class F> vec	apply(T r, F f) const				{ return vec(f(x,r), f(y,r), f(z,r)); }
+		template<class F> vec	apply(const vec & r, F f) const		{ return {f(x,r.x), f(y,r.y), f(z,r.z)}; }
+		template<class F> vec	apply(T r, F f) const				{ return {f(x,r), f(y,r), f(z,r)}; }
 	};
 	template<class T> struct vec<T,4>
 	{
 		T						x, y, z, w;
 								vec()								: x(), y(), z(), w() {}
 								vec(T x, T y, T z, T w)				: x(x), y(y), z(z), w(w) {}
+								vec(const vec<T,2> & xy, T z, T w)  : vec(xy.x, xy.y, z, w) {}
+								vec(const vec<T,3> & xyz, T w)      : vec(xyz.x, xyz.y, xyz.z, w) {}
 		T &						operator [] (int i)					{ return (&x)[i]; } // v[i] retrieves the i'th row
 		const T &				operator [] (int i) const			{ return (&x)[i]; } // v[i] retrieves the i'th row 
-		template<class F> vec	apply(const vec & r, F f) const		{ return vec(f(x,r.x), f(y,r.y), f(z,r.z), f(w,r.w)); }
-		template<class F> vec	apply(T r, F f) const				{ return vec(f(x,r), f(y,r), f(z,r), f(w,r)); }
+		template<class F> vec	apply(const vec & r, F f) const		{ return {f(x,r.x), f(y,r.y), f(z,r.z), f(w,r.w)}; }
+		template<class F> vec	apply(T r, F f) const				{ return {f(x,r), f(y,r), f(z,r), f(w,r)}; }
 	};
 
 	template<class T, int M> vec<T,M>   operator +  (const vec<T,M> & a, const vec<T,M> & b)      { return a.apply(b, std::plus      <T>()); }
@@ -56,8 +59,6 @@ namespace cu
 	template<class T, int M> vec<T,M> & operator *= (vec<T,M> & a, T b)                           { return a=a*b; }
 	template<class T, int M> vec<T,M> & operator /= (vec<T,M> & a, T b)                           { return a=a/b; }
 
-	template<class T>        vec<T,3>   cat         (const vec<T,2> & xy, T z)                    { return vec<T,3>(xy.x, xy.y, z); }
-	template<class T>        vec<T,4>   cat         (const vec<T,3> & xyz, T w)                   { return vec<T,4>(xyz.x, xyz.y, xyz.w, w); }
 	template<class T>        T          dot         (const vec<T,2> & a, const vec<T,2> & b)      { return a.x*b.x + a.y*b.y; }
 	template<class T>        T          dot         (const vec<T,3> & a, const vec<T,3> & b)      { return a.x*b.x + a.y*b.y + a.z*b.z; }
 	template<class T>        T          dot         (const vec<T,4> & a, const vec<T,4> & b)      { return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w; }
@@ -79,9 +80,9 @@ namespace cu
 		const U &				operator [] (int j) const			{ return (&x)[j]; } // M[j] retrieves the j'th column
 		T &						operator () (int i, int j)			{ return (*this)[j][i]; } // M(i,j) retrieves the i'th row of the j'th column
 		const T &				operator () (int i, int j) const	{ return (*this)[j][i]; } // M(i,j) retrieves the i'th row of the j'th column
-		vec<T,2>				row(int i) const					{ return vec<T,2>(x[i],y[i]); } // row(i) retrieves the i'th row
-		template<class F> mat	apply(const mat & r, F f) const		{ return mat(x.apply(r.x,f), y.apply(r.y,f)); }
-		template<class F> mat	apply(T r, F f) const				{ return mat(x.apply(r,f), y.apply(r,f)); }
+		vec<T,2>				row(int i) const					{ return {x[i],y[i]}; } // row(i) retrieves the i'th row
+		template<class F> mat	apply(const mat & r, F f) const		{ return {x.apply(r.x,f), y.apply(r.y,f)}; }
+		template<class F> mat	apply(T r, F f) const				{ return {x.apply(r,f), y.apply(r,f)}; }
 	};
 	template<class T, int M> struct mat<T,M,3>
 	{
@@ -93,9 +94,9 @@ namespace cu
 		const U &				operator [] (int j) const			{ return (&x)[j]; } // M[j] retrieves the j'th column
 		T &						operator () (int i, int j)			{ return (*this)[j][i]; } // M(i,j) retrieves the i'th row of the j'th column
 		const T &				operator () (int i, int j) const	{ return (*this)[j][i]; } // M(i,j) retrieves the i'th row of the j'th column
-		vec<T,3>				row(int i) const					{ return vec<T,3>(x[i],y[i],z[i]); } // row(i) retrieves the i'th row
-		template<class F> mat	apply(const mat & r, F f) const		{ return mat(x.apply(r.x,f), y.apply(r.y,f), z.apply(r.z,f)); }
-		template<class F> mat	apply(T r, F f) const				{ return mat(x.apply(r,f), y.apply(r,f), z.apply(r,f)); }
+		vec<T,3>				row(int i) const					{ return {x[i],y[i],z[i]}; } // row(i) retrieves the i'th row
+		template<class F> mat	apply(const mat & r, F f) const		{ return {x.apply(r.x,f), y.apply(r.y,f), z.apply(r.z,f)}; }
+		template<class F> mat	apply(T r, F f) const				{ return {x.apply(r,f), y.apply(r,f), z.apply(r,f)}; }
 	};
 	template<class T, int M> struct mat<T,M,4>
 	{
@@ -107,9 +108,9 @@ namespace cu
 		const U &				operator [] (int j) const			{ return (&x)[j]; } // M[j] retrieves the j'th column
 		T &						operator () (int i, int j)			{ return (*this)[j][i]; } // M(i,j) retrieves the i'th row of the j'th column
 		const T &				operator () (int i, int j) const	{ return (*this)[j][i]; } // M(i,j) retrieves the i'th row of the j'th column
-		vec<T,4>				row(int i) const					{ return vec<T,4>(x[i],y[i],z[i],w[i]); } // row(i) retrieves the i'th row
-		template<class F> mat	apply(const mat & r, F f) const		{ return mat(x.apply(r.x,f), y.apply(r.y,f), z.apply(r.z,f), w.apply(r.w,f)); }
-		template<class F> mat	apply(T r, F f) const				{ return mat(x.apply(r,f), y.apply(r,f), z.apply(r,f), w.apply(r,f)); }
+		vec<T,4>				row(int i) const					{ return {x[i],y[i],z[i],w[i]}; } // row(i) retrieves the i'th row
+		template<class F> mat	apply(const mat & r, F f) const		{ return {x.apply(r.x,f), y.apply(r.y,f), z.apply(r.z,f), w.apply(r.w,f)}; }
+		template<class F> mat	apply(T r, F f) const				{ return {x.apply(r,f), y.apply(r,f), z.apply(r,f), w.apply(r,f)}; }
 	};
 
 	template<class T, int M, int N> mat<T,M,N>   operator +  (const mat<T,M,N> & a, const mat<T,M,N> & b) { return a.apply(b, std::plus      <T>()); }
@@ -129,26 +130,26 @@ namespace cu
 	template<class T, int M, int N> mat<T,M,N> & operator *= (mat<T,M,N> & a, T b) { return a=a*b; }
 	template<class T, int M, int N> mat<T,M,N> & operator /= (mat<T,M,N> & a, T b) { return a=a/b; }
 
-	template<class T> mat<T,2,2> adj(const mat<T,2,2> & a) { return mat<T,2,2>(vec<T,2>(a.y.y, -a.x.y), vec<T,2>(-a.y.x, a.x.x)); }
-	template<class T> mat<T,3,3> adj(const mat<T,3,3> & a) { return mat<T,3,3>(vec<T,3>(a.y.y*a.z.z - a.z.y*a.y.z, a.z.y*a.x.z - a.x.y*a.z.z, a.x.y*a.y.z - a.y.y*a.x.z),
-                                                                               vec<T,3>(a.y.z*a.z.x - a.z.z*a.y.x, a.z.z*a.x.x - a.x.z*a.z.x, a.x.z*a.y.x - a.y.z*a.x.x),
-                                                                               vec<T,3>(a.y.x*a.z.y - a.z.x*a.y.y, a.z.x*a.x.y - a.x.x*a.z.y, a.x.x*a.y.y - a.y.x*a.x.y)); }
-	template<class T> mat<T,4,4> adj(const mat<T,4,4> & a) { return mat<T,4,4>(vec<T,4>(a.y.y*a.z.z*a.w.w + a.w.y*a.y.z*a.z.w + a.z.y*a.w.z*a.y.w - a.y.y*a.w.z*a.z.w - a.z.y*a.y.z*a.w.w - a.w.y*a.z.z*a.y.w,
-                                                                                        a.x.y*a.w.z*a.z.w + a.z.y*a.x.z*a.w.w + a.w.y*a.z.z*a.x.w - a.w.y*a.x.z*a.z.w - a.z.y*a.w.z*a.x.w - a.x.y*a.z.z*a.w.w,
-                                                                                        a.x.y*a.y.z*a.w.w + a.w.y*a.x.z*a.y.w + a.y.y*a.w.z*a.x.w - a.x.y*a.w.z*a.y.w - a.y.y*a.x.z*a.w.w - a.w.y*a.y.z*a.x.w,
-                                                                                        a.x.y*a.z.z*a.y.w + a.y.y*a.x.z*a.z.w + a.z.y*a.y.z*a.x.w - a.x.y*a.y.z*a.z.w - a.z.y*a.x.z*a.y.w - a.y.y*a.z.z*a.x.w),
-                                                                               vec<T,4>(a.y.z*a.w.w*a.z.x + a.z.z*a.y.w*a.w.x + a.w.z*a.z.w*a.y.x - a.y.z*a.z.w*a.w.x - a.w.z*a.y.w*a.z.x - a.z.z*a.w.w*a.y.x,
-                                                                                        a.x.z*a.z.w*a.w.x + a.w.z*a.x.w*a.z.x + a.z.z*a.w.w*a.x.x - a.x.z*a.w.w*a.z.x - a.z.z*a.x.w*a.w.x - a.w.z*a.z.w*a.x.x,
-                                                                                        a.x.z*a.w.w*a.y.x + a.y.z*a.x.w*a.w.x + a.w.z*a.y.w*a.x.x - a.x.z*a.y.w*a.w.x - a.w.z*a.x.w*a.y.x - a.y.z*a.w.w*a.x.x,
-                                                                                        a.x.z*a.y.w*a.z.x + a.z.z*a.x.w*a.y.x + a.y.z*a.z.w*a.x.x - a.x.z*a.z.w*a.y.x - a.y.z*a.x.w*a.z.x - a.z.z*a.y.w*a.x.x),
-                                                                               vec<T,4>(a.y.w*a.z.x*a.w.y + a.w.w*a.y.x*a.z.y + a.z.w*a.w.x*a.y.y - a.y.w*a.w.x*a.z.y - a.z.w*a.y.x*a.w.y - a.w.w*a.z.x*a.y.y,
-                                                                                        a.x.w*a.w.x*a.z.y + a.z.w*a.x.x*a.w.y + a.w.w*a.z.x*a.x.y - a.x.w*a.z.x*a.w.y - a.w.w*a.x.x*a.z.y - a.z.w*a.w.x*a.x.y,
-                                                                                        a.x.w*a.y.x*a.w.y + a.w.w*a.x.x*a.y.y + a.y.w*a.w.x*a.x.y - a.x.w*a.w.x*a.y.y - a.y.w*a.x.x*a.w.y - a.w.w*a.y.x*a.x.y,
-                                                                                        a.x.w*a.z.x*a.y.y + a.y.w*a.x.x*a.z.y + a.z.w*a.y.x*a.x.y - a.x.w*a.y.x*a.z.y - a.z.w*a.x.x*a.y.y - a.y.w*a.z.x*a.x.y),
-                                                                               vec<T,4>(a.y.x*a.w.y*a.z.z + a.z.x*a.y.y*a.w.z + a.w.x*a.z.y*a.y.z - a.y.x*a.z.y*a.w.z - a.w.x*a.y.y*a.z.z - a.z.x*a.w.y*a.y.z,
-                                                                                        a.x.x*a.z.y*a.w.z + a.w.x*a.x.y*a.z.z + a.z.x*a.w.y*a.x.z - a.x.x*a.w.y*a.z.z - a.z.x*a.x.y*a.w.z - a.w.x*a.z.y*a.x.z,
-                                                                                        a.x.x*a.w.y*a.y.z + a.y.x*a.x.y*a.w.z + a.w.x*a.y.y*a.x.z - a.x.x*a.y.y*a.w.z - a.w.x*a.x.y*a.y.z - a.y.x*a.w.y*a.x.z,
-                                                                                        a.x.x*a.y.y*a.z.z + a.z.x*a.x.y*a.y.z + a.y.x*a.z.y*a.x.z - a.x.x*a.z.y*a.y.z - a.y.x*a.x.y*a.z.z - a.z.x*a.y.y*a.x.z)); }
+	template<class T> mat<T,2,2> adj(const mat<T,2,2> & a) { return {{a.y.y, -a.x.y}, {-a.y.x, a.x.x}}; }
+	template<class T> mat<T,3,3> adj(const mat<T,3,3> & a) { return {{a.y.y*a.z.z - a.z.y*a.y.z, a.z.y*a.x.z - a.x.y*a.z.z, a.x.y*a.y.z - a.y.y*a.x.z},
+                                                                     {a.y.z*a.z.x - a.z.z*a.y.x, a.z.z*a.x.x - a.x.z*a.z.x, a.x.z*a.y.x - a.y.z*a.x.x},
+                                                                     {a.y.x*a.z.y - a.z.x*a.y.y, a.z.x*a.x.y - a.x.x*a.z.y, a.x.x*a.y.y - a.y.x*a.x.y}}; }
+	template<class T> mat<T,4,4> adj(const mat<T,4,4> & a) { return {{a.y.y*a.z.z*a.w.w + a.w.y*a.y.z*a.z.w + a.z.y*a.w.z*a.y.w - a.y.y*a.w.z*a.z.w - a.z.y*a.y.z*a.w.w - a.w.y*a.z.z*a.y.w,
+                                                                      a.x.y*a.w.z*a.z.w + a.z.y*a.x.z*a.w.w + a.w.y*a.z.z*a.x.w - a.w.y*a.x.z*a.z.w - a.z.y*a.w.z*a.x.w - a.x.y*a.z.z*a.w.w,
+                                                                      a.x.y*a.y.z*a.w.w + a.w.y*a.x.z*a.y.w + a.y.y*a.w.z*a.x.w - a.x.y*a.w.z*a.y.w - a.y.y*a.x.z*a.w.w - a.w.y*a.y.z*a.x.w,
+                                                                      a.x.y*a.z.z*a.y.w + a.y.y*a.x.z*a.z.w + a.z.y*a.y.z*a.x.w - a.x.y*a.y.z*a.z.w - a.z.y*a.x.z*a.y.w - a.y.y*a.z.z*a.x.w},
+                                                                     {a.y.z*a.w.w*a.z.x + a.z.z*a.y.w*a.w.x + a.w.z*a.z.w*a.y.x - a.y.z*a.z.w*a.w.x - a.w.z*a.y.w*a.z.x - a.z.z*a.w.w*a.y.x,
+                                                                      a.x.z*a.z.w*a.w.x + a.w.z*a.x.w*a.z.x + a.z.z*a.w.w*a.x.x - a.x.z*a.w.w*a.z.x - a.z.z*a.x.w*a.w.x - a.w.z*a.z.w*a.x.x,
+                                                                      a.x.z*a.w.w*a.y.x + a.y.z*a.x.w*a.w.x + a.w.z*a.y.w*a.x.x - a.x.z*a.y.w*a.w.x - a.w.z*a.x.w*a.y.x - a.y.z*a.w.w*a.x.x,
+                                                                      a.x.z*a.y.w*a.z.x + a.z.z*a.x.w*a.y.x + a.y.z*a.z.w*a.x.x - a.x.z*a.z.w*a.y.x - a.y.z*a.x.w*a.z.x - a.z.z*a.y.w*a.x.x},
+                                                                     {a.y.w*a.z.x*a.w.y + a.w.w*a.y.x*a.z.y + a.z.w*a.w.x*a.y.y - a.y.w*a.w.x*a.z.y - a.z.w*a.y.x*a.w.y - a.w.w*a.z.x*a.y.y,
+                                                                      a.x.w*a.w.x*a.z.y + a.z.w*a.x.x*a.w.y + a.w.w*a.z.x*a.x.y - a.x.w*a.z.x*a.w.y - a.w.w*a.x.x*a.z.y - a.z.w*a.w.x*a.x.y,
+                                                                      a.x.w*a.y.x*a.w.y + a.w.w*a.x.x*a.y.y + a.y.w*a.w.x*a.x.y - a.x.w*a.w.x*a.y.y - a.y.w*a.x.x*a.w.y - a.w.w*a.y.x*a.x.y,
+                                                                      a.x.w*a.z.x*a.y.y + a.y.w*a.x.x*a.z.y + a.z.w*a.y.x*a.x.y - a.x.w*a.y.x*a.z.y - a.z.w*a.x.x*a.y.y - a.y.w*a.z.x*a.x.y},
+                                                                     {a.y.x*a.w.y*a.z.z + a.z.x*a.y.y*a.w.z + a.w.x*a.z.y*a.y.z - a.y.x*a.z.y*a.w.z - a.w.x*a.y.y*a.z.z - a.z.x*a.w.y*a.y.z,
+                                                                      a.x.x*a.z.y*a.w.z + a.w.x*a.x.y*a.z.z + a.z.x*a.w.y*a.x.z - a.x.x*a.w.y*a.z.z - a.z.x*a.x.y*a.w.z - a.w.x*a.z.y*a.x.z,
+                                                                      a.x.x*a.w.y*a.y.z + a.y.x*a.x.y*a.w.z + a.w.x*a.y.y*a.x.z - a.x.x*a.y.y*a.w.z - a.w.x*a.x.y*a.y.z - a.y.x*a.w.y*a.x.z,
+                                                                      a.x.x*a.y.y*a.z.z + a.z.x*a.x.y*a.y.z + a.y.x*a.z.y*a.x.z - a.x.x*a.z.y*a.y.z - a.y.x*a.x.y*a.z.z - a.z.x*a.y.y*a.x.z}}; }
 	template<class T> T det(const mat<T,2,2> & a) { return a.x.x*a.y.y - a.x.y*a.y.x; }
 	template<class T> T det(const mat<T,3,3> & a) { return a.x.x*(a.y.y*a.z.z - a.z.y*a.y.z) + a.x.y*(a.y.z*a.z.x - a.z.z*a.y.x) + a.x.z*(a.y.x*a.z.y - a.z.x*a.y.y); }
 	template<class T> T det(const mat<T,4,4> & a) { return a.x.x*(a.y.y*a.z.z*a.w.w + a.w.y*a.y.z*a.z.w + a.z.y*a.w.z*a.y.w - a.y.y*a.w.z*a.z.w - a.z.y*a.y.z*a.w.w - a.w.y*a.z.z*a.y.w) +
@@ -159,12 +160,12 @@ namespace cu
 	template<class T, int M> vec<T,M> mul(const mat<T,M,2> & a, const vec<T,2> & b) { return a.x*b.x + a.y*b.y; }
 	template<class T, int M> vec<T,M> mul(const mat<T,M,3> & a, const vec<T,3> & b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
 	template<class T, int M> vec<T,M> mul(const mat<T,M,4> & a, const vec<T,4> & b) { return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w; }
-	template<class T, int M, int N> mat<T,M,2> mul(const mat<T,M,N> & a, const mat<T,N,2> & b) { return mat<T,M,2>(mul(a,b.x), mul(a,b.y)); }
-	template<class T, int M, int N> mat<T,M,3> mul(const mat<T,M,N> & a, const mat<T,N,3> & b) { return mat<T,M,3>(mul(a,b.x), mul(a,b.y), mul(a,b.z)); }
-	template<class T, int M, int N> mat<T,M,4> mul(const mat<T,M,N> & a, const mat<T,N,4> & b) { return mat<T,M,4>(mul(a,b.x), mul(a,b.y), mul(a,b.z), mul(a,b.w)); }
-	template<class T, int M> mat<T,M,2> transpose(const mat<T,2,M> & a) { return mat<T,M,2>(a.row(0), a.row(1)); }
-	template<class T, int M> mat<T,M,3> transpose(const mat<T,3,M> & a) { return mat<T,M,3>(a.row(0), a.row(1), a.row(2)); }
-	template<class T, int M> mat<T,M,4> transpose(const mat<T,4,M> & a) { return mat<T,M,4>(a.row(0), a.row(1), a.row(2), a.row(3)); }
+	template<class T, int M, int N> mat<T,M,2> mul(const mat<T,M,N> & a, const mat<T,N,2> & b) { return {mul(a,b.x), mul(a,b.y)}; }
+	template<class T, int M, int N> mat<T,M,3> mul(const mat<T,M,N> & a, const mat<T,N,3> & b) { return {mul(a,b.x), mul(a,b.y), mul(a,b.z)}; }
+	template<class T, int M, int N> mat<T,M,4> mul(const mat<T,M,N> & a, const mat<T,N,4> & b) { return {mul(a,b.x), mul(a,b.y), mul(a,b.z), mul(a,b.w)}; }
+	template<class T, int M> mat<T,M,2> transpose(const mat<T,2,M> & a) { return {a.row(0), a.row(1)}; }
+	template<class T, int M> mat<T,M,3> transpose(const mat<T,3,M> & a) { return {a.row(0), a.row(1), a.row(2)}; }
+	template<class T, int M> mat<T,M,4> transpose(const mat<T,4,M> & a) { return {a.row(0), a.row(1), a.row(2), a.row(3)}; }
 
 	typedef vec<int8_t,2> byte2; typedef vec<uint8_t,2> ubyte2; typedef vec<int16_t,2> short2; typedef vec<uint16_t,2> ushort2;
 	typedef vec<int8_t,3> byte3; typedef vec<uint8_t,3> ubyte3; typedef vec<int16_t,3> short3; typedef vec<uint16_t,3> ushort3;

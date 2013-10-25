@@ -3,7 +3,7 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <OutDir>..\bin\$(Platform)</OutDir>
+    <OutDir>..\bin\$(Platform)\</OutDir>
     <IntDir>..\obj\$(ProjectName)\$(Configuration)$(Platform)\</IntDir>
     <TargetName>$(ProjectName)$(Configuration)</TargetName>
     <IncludePath>..\include;$(IncludePath)</IncludePath>

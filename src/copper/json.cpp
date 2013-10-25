@@ -135,7 +135,7 @@ namespace cu { namespace json
 				else
 				{
 					uint16_t val = (decode_hex(first[1]) << 12) | (decode_hex(first[2]) << 8) | (decode_hex(first[3]) << 4) | decode_hex(first[4]);
-					if (val < 0x80) s.push_back(val); // ASCII codepoint, no translation needed
+					if (val < 0x80) s.push_back(static_cast<char>(val)); // ASCII codepoint, no translation needed
 					else if (val < 0x800) // 2-byte UTF-8 encoding
 					{
 						s.push_back(0xC0 | ((val >> 6) & 0x1F)); // Leading byte: 5 content bits
