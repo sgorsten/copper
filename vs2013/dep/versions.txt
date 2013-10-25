@@ -1,0 +1,2 @@
+SDL2: SDL2-devel-2.0.1-VC
+GLEW: glew-1.10.0-win32
