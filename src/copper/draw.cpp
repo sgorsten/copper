@@ -31,7 +31,7 @@ void mesh::SetVertices(const void * vertices, size_t vertexSize, size_t numVerti
     numVerts = numVertices;
 }
 
-void mesh::SetAttribute(GLuint loc, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid * pointer)
+void mesh::SetAttribute(GLuint loc, int size, GLenum type, bool normalized, size_t stride, const void * pointer)
 {
     if (!vertArray) glGenVertexArrays(1, &vertArray);
     glBindVertexArray(vertArray);
@@ -39,7 +39,7 @@ void mesh::SetAttribute(GLuint loc, GLint size, GLenum type, GLboolean normalize
     if (!arrBuf) glGenBuffers(1, &arrBuf);
     glBindBuffer(GL_ARRAY_BUFFER, arrBuf);
     glEnableVertexAttribArray(loc);
-    glVertexAttribPointer(loc, size, type, normalized, stride, pointer);
+    glVertexAttribPointer(loc, size, type, normalized ? GL_TRUE : GL_FALSE, stride, pointer);
 
     glBindVertexArray(0);
 }

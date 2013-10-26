@@ -10,7 +10,7 @@ using namespace cu;
 struct ColorVertex
 {
     float3 position;
-    float3 color;
+    ubyte4 color;
 };
 
 gl::mesh CreateMesh(const std::vector<ColorVertex> & verts)
@@ -65,10 +65,10 @@ int main(int argc, char * argv[])
     );
 
     auto mesh = CreateMesh({
-        { { -0.5f, -0.5f, 0 }, { 1, 0, 0 } },
-        { { +0.5f, -0.5f, 0 }, { 1, 1, 0 } },
-        { { +0.5f, +0.5f, 0 }, { 0, 1, 0 } },
-        { { -0.5f, +0.5f, 0 }, { 0, 0, 1 } },
+        { { -0.5f, -0.5f, 0 }, { 255,   0,   0, 255 } },
+        { { +0.5f, -0.5f, 0 }, { 255, 255,   0, 255 } },
+        { { +0.5f, +0.5f, 0 }, {   0, 255,   0, 255 } },
+        { { -0.5f, +0.5f, 0 }, {   0,   0, 255, 255 } },
     });
     const uint32_t elems[] = {0,1,2, 0,2,3};
     mesh.SetElements(elems, 6);
