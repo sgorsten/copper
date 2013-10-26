@@ -19,10 +19,12 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\cu\draw.h" />
     <ClInclude Include="..\include\cu\json.h" />
     <ClInclude Include="..\include\cu\math.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\src\copper\draw.cpp" />
     <ClCompile Include="..\src\copper\json.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

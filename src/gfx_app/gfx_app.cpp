@@ -1,9 +1,8 @@
-#include <cu/math.h>
+#include <cu/draw.h>
 
-#define GLEW_STATIC
-#include <GL/glew.h>
 #include <SDL.h>
 
+#include <vector>
 #include <iostream>
 
 using namespace cu;
@@ -14,59 +13,14 @@ struct ColorVertex
     float3 color;
 };
 
-class Mesh
+gl::Mesh CreateMesh(const std::vector<ColorVertex> & verts)
 {
-    GLuint vertArray,arrBuf,elemBuf;
-    GLsizei numVerts,numElems;
-public:
-    Mesh() : vertArray(), arrBuf(), elemBuf(), numVerts(), numElems() {}
-
-    void SetVertices(const void * vertices, size_t vertexSize, size_t numVertices, GLenum usage = GL_STATIC_DRAW)
-    {
-        if (!arrBuf) glGenBuffers(1, &arrBuf);
-        glBindBuffer(GL_ARRAY_BUFFER, arrBuf);
-        glBufferData(GL_ARRAY_BUFFER, vertexSize*numVertices, vertices, usage);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        numVerts = numVertices;
-    }
-
-    void SetAttribute(GLuint loc, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid * pointer)
-    {
-        if (!vertArray) glGenVertexArrays(1, &vertArray);
-        glBindVertexArray(vertArray);
-
-        if (!arrBuf) glGenBuffers(1, &arrBuf);
-        glBindBuffer(GL_ARRAY_BUFFER, arrBuf);
-        glEnableVertexAttribArray(loc);
-        glVertexAttribPointer(loc, size, type, normalized, stride, pointer);
-
-        glBindVertexArray(0);
-    }
-
-    void SetIndices(const uint32_t * indices, size_t numIndices, GLenum usage = GL_STATIC_DRAW)
-    {
-        if (!vertArray) glGenVertexArrays(1, &vertArray);
-        glBindVertexArray(vertArray);
-
-        if (!elemBuf) glGenBuffers(1, &elemBuf);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elemBuf);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t)*numIndices, indices, usage);
-        numElems = numIndices;
-
-        glBindVertexArray(0);
-    }
-
-    template<class T> void SetVertices(const T * vertices, size_t numVertices) { SetVertices(vertices, sizeof(T), numVertices); }
-    template<class T, int N> void SetAttribute(int loc, const vec<float,N> T::*attribute) { SetAttribute(loc, N, GL_FLOAT, GL_FALSE, sizeof(T), &(reinterpret_cast<const T *>(0)->*attribute)); }
-
-    void Draw() const
-    {
-        if (!vertArray || numVerts == 0) return;
-        glBindVertexArray(vertArray);
-        if(numElems > 0) glDrawElements(GL_TRIANGLES, numElems, GL_UNSIGNED_INT, 0);
-        else glDrawArrays(GL_TRIANGLES, 0, numVerts);
-    }
-};
+    gl::Mesh m;
+    m.SetVertices(verts);
+    m.SetAttribute(0, &ColorVertex::position);
+    m.SetAttribute(1, &ColorVertex::color);
+    return m;
+}
 
 int main(int argc, char * argv[])
 {
@@ -118,18 +72,14 @@ int main(int argc, char * argv[])
     glAttachShader(prog, fs);
     glLinkProgram(prog);
 
-    const ColorVertex verts[] = {
-        {{ -0.5f, -0.5f, 0 }, { 1, 0, 0 }},
-        {{ +0.5f, -0.5f, 0 }, { 1, 1, 0 }},
-        {{ +0.5f, +0.5f, 0 }, { 0, 1, 0 }},
-        {{ -0.5f, +0.5f, 0 }, { 0, 0, 1 } },
-    };
-    const uint32_t indices[] = {0,1,2, 0,2,3};
-    Mesh m;
-    m.SetVertices(verts, 4);
-    m.SetAttribute(0, &ColorVertex::position);
-    m.SetAttribute(1, &ColorVertex::color);
-    m.SetIndices(indices, 6);
+    gl::Mesh m = CreateMesh({
+        { { -0.5f, -0.5f, 0 }, { 1, 0, 0 } },
+        { { +0.5f, -0.5f, 0 }, { 1, 1, 0 } },
+        { { +0.5f, +0.5f, 0 }, { 0, 1, 0 } },
+        { { -0.5f, +0.5f, 0 }, { 0, 0, 1 } },
+    });
+    const uint32_t elems[] = {0,1,2, 0,2,3};
+    m.SetElements(elems, 6);    
 
     bool quit = false;
     while (!quit)

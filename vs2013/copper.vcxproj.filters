@@ -3,8 +3,10 @@
   <ItemGroup>
     <ClInclude Include="..\include\cu\json.h" />
     <ClInclude Include="..\include\cu\math.h" />
+    <ClInclude Include="..\include\cu\draw.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\copper\json.cpp" />
+    <ClCompile Include="..\src\copper\draw.cpp" />
   </ItemGroup>
 </Project>

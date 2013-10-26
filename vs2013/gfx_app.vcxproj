@@ -149,6 +149,11 @@
   <ItemGroup>
     <ClCompile Include="..\src\gfx_app\gfx_app.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="copper.vcxproj">
+      <Project>{f36ddc54-4bf9-40d9-9d85-de7d5510acac}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
