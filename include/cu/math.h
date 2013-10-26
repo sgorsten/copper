@@ -68,7 +68,6 @@ namespace cu
     template<class T, int M> auto max (const vec<T,M> & a, const vec<T,M> & b) -> vec<T,M>        { return a.apply(b, std::max<T>); }
     template<class T, int M> auto min (const vec<T,M> & a, const vec<T,M> & b) -> vec<T,M>        { return a.apply(b, std::min<T>); }
     template<class T, int M> auto norm(const vec<T,M> & a) -> vec<T,M>                            { return a/mag(a); }
-    template<class T, int M> auto ptr (const vec<T,M> & a) -> const T *                           { return &a.x; }
 
     template<class T>        auto qconj     (const vec<T,4> & q) -> vec<T,4>                      { return {-q.x,-q.y,-q.z,q.w}; }
     template<class T>        auto qinv      (const vec<T,4> & q) -> vec<T,4>                      { return qconj(q)/mag2(q); }
@@ -145,7 +144,6 @@ namespace cu
     template<class T, int M, int N> auto mul      (const mat<T,M,N> & a, const mat<T,N,2> & b) -> mat<T,M,2>   { return {mul(a,b.x), mul(a,b.y)}; }
     template<class T, int M, int N> auto mul      (const mat<T,M,N> & a, const mat<T,N,3> & b) -> mat<T,M,3>   { return {mul(a,b.x), mul(a,b.y), mul(a,b.z)}; }
     template<class T, int M, int N> auto mul      (const mat<T,M,N> & a, const mat<T,N,4> & b) -> mat<T,M,4>   { return {mul(a,b.x), mul(a,b.y), mul(a,b.z), mul(a,b.w)}; }
-    template<class T, int M, int N> auto ptr      (const mat<T,M,N> & a) -> const T *                          { return &a.x.x; }
     template<class T, int M>        auto transpose(const mat<T,2,M> & a) -> mat<T,M,2>                         { return {a.row(0), a.row(1)}; }
     template<class T, int M>        auto transpose(const mat<T,3,M> & a) -> mat<T,M,3>                         { return {a.row(0), a.row(1), a.row(2)}; }
     template<class T, int M>        auto transpose(const mat<T,4,M> & a) -> mat<T,M,4>                         { return {a.row(0), a.row(1), a.row(2), a.row(3)}; }
