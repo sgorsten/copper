@@ -6,7 +6,8 @@
     <OutDir>..\bin\$(Platform)\</OutDir>
     <IntDir>..\obj\$(ProjectName)\$(Configuration)$(Platform)\</IntDir>
     <TargetName>$(ProjectName)$(Configuration)</TargetName>
-    <IncludePath>..\include;$(IncludePath)</IncludePath>
+    <IncludePath>..\include;dep\include;$(IncludePath)</IncludePath>
+    <LibraryPath>dep\lib\$(Platform);$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup />
   <ItemGroup />
