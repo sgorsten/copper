@@ -13,14 +13,16 @@ struct ColorVertex
     float3 color;
 };
 
-gl::Mesh CreateMesh(const std::vector<ColorVertex> & verts)
+gl::mesh CreateMesh(const std::vector<ColorVertex> & verts)
 {
-    gl::Mesh m;
+    gl::mesh m;
     m.SetVertices(verts);
     m.SetAttribute(0, &ColorVertex::position);
     m.SetAttribute(1, &ColorVertex::color);
     return m;
 }
+
+
 
 int main(int argc, char * argv[])
 {
@@ -39,47 +41,37 @@ int main(int argc, char * argv[])
     std::cout << "GLSL version:    " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
     if (glewInit() != GLEW_OK) return -1;
 
-    GLuint vs = glCreateShader(GL_VERTEX_SHADER);
-    const char * vsText = R"(
-        #version 330
-        layout(location = 0) in vec4 v_position;
-        layout(location = 1) in vec3 v_color;
-        out vec3 color;
-        void main()
-        {
-            gl_Position = v_position;
-            color = v_color;
-        }
-    )";
-    glShaderSource(vs, 1, &vsText, nullptr);
-    glCompileShader(vs);
+    auto prog = gl::program(
+        {GL_VERTEX_SHADER, R"(
+            #version 330
+            layout(location = 0) in vec4 v_position;
+            layout(location = 1) in vec3 v_color;
+            out vec3 color;
+            void main()
+            {
+                gl_Position = v_position;
+                color = v_color;
+            }
+        )"},
+        {GL_FRAGMENT_SHADER, R"(
+            #version 330
+            in vec3 color;
+            layout(location = 0) out vec4 f_color;
+            void main()
+            {
+                f_color = vec4(color,1);
+            }
+        )"}
+    );
 
-    GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
-    const char * fsText = R"(
-        #version 330
-        in vec3 color;
-        layout(location = 0) out vec4 f_color;
-        void main()
-        {
-            f_color = vec4(color,1);
-        }
-    )";
-    glShaderSource(fs, 1, &fsText, nullptr);
-    glCompileShader(fs);
-
-    GLuint prog = glCreateProgram();
-    glAttachShader(prog, vs);
-    glAttachShader(prog, fs);
-    glLinkProgram(prog);
-
-    gl::Mesh m = CreateMesh({
+    auto mesh = CreateMesh({
         { { -0.5f, -0.5f, 0 }, { 1, 0, 0 } },
         { { +0.5f, -0.5f, 0 }, { 1, 1, 0 } },
         { { +0.5f, +0.5f, 0 }, { 0, 1, 0 } },
         { { -0.5f, +0.5f, 0 }, { 0, 0, 1 } },
     });
     const uint32_t elems[] = {0,1,2, 0,2,3};
-    m.SetElements(elems, 6);    
+    mesh.SetElements(elems, 6);
 
     bool quit = false;
     while (!quit)
@@ -97,8 +89,8 @@ int main(int argc, char * argv[])
 
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glUseProgram(prog);
-        m.Draw();
+        prog.Use();
+        mesh.Draw();
 
         SDL_GL_SwapWindow(win);
     }

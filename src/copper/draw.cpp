@@ -2,14 +2,14 @@
 
 using namespace cu::gl;
 
-Mesh::~Mesh()
+mesh::~mesh()
 {
     glDeleteVertexArrays(1,&vertArray);
     glDeleteBuffers(1,&elemBuf);
     glDeleteBuffers(1,&arrBuf);
 }
 
-void Mesh::SetElements(const uint32_t * elements, size_t numElements, GLenum usage)
+void mesh::SetElements(const uint32_t * elements, size_t numElements, GLenum usage)
 {
     if (!vertArray) glGenVertexArrays(1, &vertArray);
     glBindVertexArray(vertArray);
@@ -22,7 +22,7 @@ void Mesh::SetElements(const uint32_t * elements, size_t numElements, GLenum usa
     glBindVertexArray(0);
 }
 
-void Mesh::SetVertices(const void * vertices, size_t vertexSize, size_t numVertices, GLenum usage)
+void mesh::SetVertices(const void * vertices, size_t vertexSize, size_t numVertices, GLenum usage)
 {
     if (!arrBuf) glGenBuffers(1, &arrBuf);
     glBindBuffer(GL_ARRAY_BUFFER, arrBuf);
@@ -31,7 +31,7 @@ void Mesh::SetVertices(const void * vertices, size_t vertexSize, size_t numVerti
     numVerts = numVertices;
 }
 
-void Mesh::SetAttribute(GLuint loc, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid * pointer)
+void mesh::SetAttribute(GLuint loc, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid * pointer)
 {
     if (!vertArray) glGenVertexArrays(1, &vertArray);
     glBindVertexArray(vertArray);
@@ -44,10 +44,44 @@ void Mesh::SetAttribute(GLuint loc, GLint size, GLenum type, GLboolean normalize
     glBindVertexArray(0);
 }
 
-void Mesh::Draw() const
+void mesh::Draw() const
 {
     if (!vertArray || numVerts == 0) return;
     glBindVertexArray(vertArray);
     if (numElems > 0) glDrawElements(GL_TRIANGLES, numElems, GL_UNSIGNED_INT, 0);
     else glDrawArrays(GL_TRIANGLES, 0, numVerts);
+}
+
+shader::shader(GLenum type, const char * source) : shader()
+{
+    obj = glCreateShader(type);
+    glShaderSource(obj, 1, &source, nullptr);
+    glCompileShader(obj);
+
+    GLint status; glGetShaderiv(obj, GL_COMPILE_STATUS, &status);
+    if (status == GL_FALSE)
+    {
+        GLint length; glGetShaderiv(obj, GL_INFO_LOG_LENGTH, &length);
+        std::string infolog(length, 0); glGetShaderInfoLog(obj, infolog.size(), nullptr, &infolog[0]);
+        throw std::runtime_error("GLSL compile error: " + infolog);
+    }
+}
+
+program::program(shader _vs, shader _fs) : program()
+{
+    vs = std::move(_vs);
+    fs = std::move(_fs);
+
+    obj = glCreateProgram();
+    glAttachShader(obj, vs.obj);
+    glAttachShader(obj, fs.obj);
+    glLinkProgram(obj);
+
+    GLint status; glGetProgramiv(obj, GL_LINK_STATUS, &status);
+    if (status == GL_FALSE)
+    {
+        GLint length; glGetProgramiv(obj, GL_INFO_LOG_LENGTH, &length);
+        std::string infolog(length, 0); glGetProgramInfoLog(obj, infolog.size(), nullptr, &infolog[0]);
+        throw std::runtime_error("GLSL link error: " + infolog);
+    }
 }

@@ -11,16 +11,16 @@ namespace cu
 {
     namespace gl
     {
-        class Mesh
+        class mesh
         {
             GLuint vertArray, arrBuf, elemBuf;
             GLsizei numVerts, numElems;
 
-            Mesh(const Mesh & r); Mesh & operator = (const Mesh & r); // No copy
+            mesh(const mesh & r); mesh & operator = (const mesh & r); // No copy
         public:
-            Mesh() : vertArray(), arrBuf(), elemBuf(), numVerts(), numElems() {}
-            Mesh(Mesh && r) : vertArray(r.vertArray), arrBuf(r.arrBuf), elemBuf(r.elemBuf), numVerts(r.numVerts), numElems(r.numElems) { r.vertArray=r.arrBuf=r.elemBuf=0; }
-            ~Mesh();
+            mesh() : vertArray(), arrBuf(), elemBuf(), numVerts(), numElems() {}
+            mesh(mesh && r) : vertArray(r.vertArray), arrBuf(r.arrBuf), elemBuf(r.elemBuf), numVerts(r.numVerts), numElems(r.numElems) { r.vertArray=r.arrBuf=r.elemBuf=0; }
+            ~mesh();
 
             void Draw() const;
 
@@ -32,7 +32,41 @@ namespace cu
             template<class T> void SetVertices(const std::vector<T> & vertices) { SetVertices(vertices.data(), vertices.size()); }
             template<class T, int N> void SetAttribute(int loc, const vec<float, N> T::*attribute) { SetAttribute(loc, N, GL_FLOAT, GL_FALSE, sizeof(T), &(reinterpret_cast<const T *>(0)->*attribute)); }
 
-            Mesh & operator = (Mesh && r) { std::swap(vertArray, r.vertArray); std::swap(arrBuf, r.arrBuf); std::swap(elemBuf, r.elemBuf); numVerts=r.numVerts; numElems=r.numElems; return *this; }
+            mesh & operator = (mesh && r) { std::swap(vertArray, r.vertArray); std::swap(arrBuf, r.arrBuf); std::swap(elemBuf, r.elemBuf); numVerts=r.numVerts; numElems=r.numElems; return *this; }
+        };
+
+        class shader
+        {
+            friend class program;
+            GLuint obj;
+
+            shader(const shader & r); shader & operator = (const shader & r); // No copy
+        public:
+            shader() : shader() {}
+            shader(GLenum type, const char * source);
+            shader(shader && r) : obj(r.obj) { r.obj = 0; }
+            ~shader() { glDeleteShader(obj); }
+
+            const GLuint _obj() const { return obj; }
+
+            shader & operator = (shader && r) { std::swap(obj, r.obj); return *this; }
+        };
+
+        class program
+        {
+            GLuint obj;
+            shader vs,fs;
+
+            program(const program & r); program & operator = (const program & r); // No copy
+        public:
+            program() : obj() {}
+            program(shader vs, shader fs);
+            program(program && r) : obj(r.obj) { r.obj = 0; }
+            ~program() { glDeleteProgram(obj); }
+
+            void Use() const { glUseProgram(obj); }
+
+            program & operator = (program && r) { std::swap(obj, r.obj); return *this; }
         };
     }
 }
