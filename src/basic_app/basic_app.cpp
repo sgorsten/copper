@@ -17,9 +17,11 @@ int main()
     auto g = inv(float3x3{{x,0,-y}, {0,1,0}, {y,0,x}});
     auto h = inv(float4x4{{1,0,0,0}, {0,x,0,-y}, {0,0,1,0}, {0,y,0,x}});
     float4x4 i = {{g.x,0}, {g.y,0}, {g.z,0}, {0,0,0,1}};
+    auto m = mul(float2x4(), float4x3(), float3x3(), float3x2(), float2x4(), float4());
+    auto q = qmul(float4(), float4(), float4(), float4());
 
     // We can parse JSON from a string
-    auto parsed_value = json::parse(R"(
+    auto parsed_value = jsonFrom(R"(
     {
         "firstName": "John",
         "lastName": "Smith",
@@ -45,24 +47,24 @@ int main()
     })");
 
     // We can also construct it using initializer lists                
-    json::value literal_value = json::object{
+    JsonValue literal_value = JsonObject{
         {"firstName", "John"},
         {"lastName", "Smith"},
         {"age", 25},
         {"isEmployed", true},
         {"spouse", nullptr},
-        {"address", json::object{
+        {"address", JsonObject{
             {"streetAddress", "21 2nd Street"},
             {"city", "New York"},
             {"state", "NY"},
             {"postalCode", 10021}
         }},
-        {"phoneNumbers", json::array{
-            json::object{
+        {"phoneNumbers", JsonArray{
+            JsonObject{
                 {"type", "home"},
                 {"number", "212 555-1234"}
             },
-            json::object{
+            JsonObject{
                 {"type", "fax"},
                 {"number", "646 555-4567"}
             }
@@ -70,8 +72,8 @@ int main()
     };
 
     // We can easily print our json::values back into JSON
-    std::cout << "Parsed value = " << parsed_value << std::endl;
-    std::cout << "Literal value = " << literal_value << std::endl;
+    std::cout << "Parsed value = " << tabbed(parsed_value,2) << std::endl;
+    std::cout << "Literal value = " << tabbed(literal_value,2) << std::endl;
     std::cout << "Are literals equal? " << (parsed_value == literal_value ? "yes" : "no") << std::endl;
     return 0;
 }

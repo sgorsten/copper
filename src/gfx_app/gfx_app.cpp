@@ -13,12 +13,12 @@ struct ColorVertex
     ubyte4 color;
 };
 
-gl::mesh CreateMesh(const std::vector<ColorVertex> & verts)
+GlMesh CreateMesh(const std::vector<ColorVertex> & verts)
 {
-    gl::mesh m;
-    m.SetVertices(verts);
-    m.SetAttribute(0, &ColorVertex::position);
-    m.SetAttribute(1, &ColorVertex::color);
+    GlMesh m;
+    m.setVertices(verts);
+    m.setAttribute(0, &ColorVertex::position);
+    m.setAttribute(1, &ColorVertex::color);
     return m;
 }
 
@@ -41,7 +41,7 @@ int main(int argc, char * argv[])
     std::cout << "GLSL version:    " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
     if (glewInit() != GLEW_OK) return -1;
 
-    auto prog = gl::program(
+    GlProgram prog = {
         {GL_VERTEX_SHADER, R"(
             #version 330
             layout(location = 0) in vec4 v_position;
@@ -62,7 +62,7 @@ int main(int argc, char * argv[])
                 f_color = vec4(color,1);
             }
         )"}
-    );
+    };
 
     auto mesh = CreateMesh({
         { { -0.5f, -0.5f, 0 }, { 255,   0,   0, 255 } },
@@ -71,7 +71,7 @@ int main(int argc, char * argv[])
         { { -0.5f, +0.5f, 0 }, {   0,   0, 255, 255 } },
     });
     const uint32_t elems[] = {0,1,2, 0,2,3};
-    mesh.SetElements(elems, 6);
+    mesh.setElements(elems, 6);
 
     bool quit = false;
     while (!quit)
@@ -89,8 +89,8 @@ int main(int argc, char * argv[])
 
         glClear(GL_COLOR_BUFFER_BIT);
 
-        prog.Use();
-        mesh.Draw();
+        prog.use();
+        mesh.draw();
 
         SDL_GL_SwapWindow(win);
     }

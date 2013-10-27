@@ -1,75 +1,72 @@
 #ifndef COPPER_DRAW_H
 #define COPPER_DRAW_H
 
+#include "math.h"
+
 #define GLEW_STATIC
 #include <GL/glew.h>
-#include <vector>
-
-#include "math.h"
 
 namespace cu
 {
-    namespace gl
+    class GlMesh
     {
-        class mesh
-        {
-            GLuint vertArray, arrBuf, elemBuf;
-            GLsizei numVerts, numElems;
+        GLuint vertArray, arrBuf, elemBuf;
+        GLsizei numVerts, numElems;
 
-            mesh(const mesh & r); mesh & operator = (const mesh & r); // No copy
-        public:
-            mesh() : vertArray(), arrBuf(), elemBuf(), numVerts(), numElems() {}
-            mesh(mesh && r) : vertArray(r.vertArray), arrBuf(r.arrBuf), elemBuf(r.elemBuf), numVerts(r.numVerts), numElems(r.numElems) { r.vertArray=r.arrBuf=r.elemBuf=0; }
-            ~mesh();
+        GlMesh(const GlMesh & r) = delete;
+        GlMesh & operator = (const GlMesh & r) = delete;
+    public:
+        GlMesh() : vertArray(), arrBuf(), elemBuf(), numVerts(), numElems() {}
+        GlMesh(GlMesh && r) : vertArray(r.vertArray), arrBuf(r.arrBuf), elemBuf(r.elemBuf), numVerts(r.numVerts), numElems(r.numElems) { r.vertArray=r.arrBuf=r.elemBuf=0; }
+        ~GlMesh();
 
-            void Draw() const;
+        void draw() const;
 
-            void SetElements(const uint32_t * elements, size_t numElements, GLenum usage = GL_STATIC_DRAW);
-            void SetVertices(const void * vertices, size_t vertexSize, size_t numVertices, GLenum usage = GL_STATIC_DRAW);
-            void SetAttribute(GLuint loc, int size, GLenum type, bool normalized, size_t stride, const void * pointer);
+        void setElements(const uint32_t * elements, size_t numElements, GLenum usage = GL_STATIC_DRAW);
+        void setVertices(const void * vertices, size_t vertexSize, size_t numVertices, GLenum usage = GL_STATIC_DRAW);
+        void setAttribute(GLuint loc, int size, GLenum type, bool normalized, size_t stride, const void * pointer);
 
-            template<class T> void SetVertices(const T * vertices, size_t numVertices) { SetVertices(vertices, sizeof(T), numVertices); }
-            template<class T> void SetVertices(const std::vector<T> & vertices) { SetVertices(vertices.data(), vertices.size()); }
-            template<class T, int N> void SetAttribute(int loc, const vec<float, N> T::*attribute) { SetAttribute(loc, N, GL_FLOAT, false, sizeof(T), &(reinterpret_cast<const T *>(0)->*attribute)); }
-            template<class T, int N> void SetAttribute(int loc, const vec<uint8_t, N> T::*attribute, bool normalized = true) { SetAttribute(loc, N, GL_UNSIGNED_BYTE, normalized, sizeof(T), &(reinterpret_cast<const T *>(0)->*attribute)); }
+        template<class T> void setVertices(const T * vertices, size_t numVertices) { setVertices(vertices, sizeof(T), numVertices); }
+        template<class T> void setVertices(const std::vector<T> & vertices) { setVertices(vertices.data(), vertices.size()); }
+        template<class T, int N> void setAttribute(int loc, const vec<float, N> T::*attribute) { setAttribute(loc, N, GL_FLOAT, false, sizeof(T), &(reinterpret_cast<const T *>(0)->*attribute)); }
+        template<class T, int N> void setAttribute(int loc, const vec<uint8_t, N> T::*attribute, bool normalized = true) { setAttribute(loc, N, GL_UNSIGNED_BYTE, normalized, sizeof(T), &(reinterpret_cast<const T *>(0)->*attribute)); }
 
-            mesh & operator = (mesh && r) { std::swap(vertArray, r.vertArray); std::swap(arrBuf, r.arrBuf); std::swap(elemBuf, r.elemBuf); numVerts=r.numVerts; numElems=r.numElems; return *this; }
-        };
+        GlMesh & operator = (GlMesh && r) { std::swap(vertArray, r.vertArray); std::swap(arrBuf, r.arrBuf); std::swap(elemBuf, r.elemBuf); numVerts=r.numVerts; numElems=r.numElems; return *this; }
+    };
 
-        class shader
-        {
-            friend class program;
-            GLuint obj;
+    class GlShader
+    {
+        friend class GlProgram;
+        GLuint obj;
 
-            shader(const shader & r); shader & operator = (const shader & r); // No copy
-        public:
-            shader() : obj() {}
-            shader(GLenum type, const char * source);
-            shader(shader && r) : obj(r.obj) { r.obj = 0; }
-            ~shader() { glDeleteShader(obj); }
+        GlShader(const GlShader & r) = delete;
+        GlShader & operator = (const GlShader & r) = delete;
+    public:
+        GlShader() : obj() {}
+        GlShader(GLenum type, const char * source);
+        GlShader(GlShader && r) : obj(r.obj) { r.obj = 0; }
+        ~GlShader() { glDeleteShader(obj); }
 
-            const GLuint _obj() const { return obj; }
+        GlShader & operator = (GlShader && r) { std::swap(obj, r.obj); return *this; }
+    };
 
-            shader & operator = (shader && r) { std::swap(obj, r.obj); return *this; }
-        };
+    class GlProgram
+    {
+        GLuint obj;
+        GlShader vs, fs;
 
-        class program
-        {
-            GLuint obj;
-            shader vs,fs;
+        GlProgram(const GlProgram & r) = delete;
+        GlProgram & operator = (const GlProgram & r) = delete;
+    public:
+        GlProgram() : obj() {}
+        GlProgram(GlShader vs, GlShader fs);
+        GlProgram(GlProgram && r) : obj(r.obj) { r.obj = 0; }
+        ~GlProgram() { glDeleteProgram(obj); }
 
-            program(const program & r); program & operator = (const program & r); // No copy
-        public:
-            program() : obj() {}
-            program(shader vs, shader fs);
-            program(program && r) : obj(r.obj) { r.obj = 0; }
-            ~program() { glDeleteProgram(obj); }
+        void use() const { glUseProgram(obj); }
 
-            void Use() const { glUseProgram(obj); }
-
-            program & operator = (program && r) { std::swap(obj, r.obj); return *this; }
-        };
-    }
+        GlProgram & operator = (GlProgram && r) { std::swap(obj, r.obj); return *this; }
+    };
 }
 
 #endif

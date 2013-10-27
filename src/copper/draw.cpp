@@ -1,15 +1,16 @@
+#include "cu/util.h"
 #include "cu/draw.h"
 
-using namespace cu::gl;
+using namespace cu;
 
-mesh::~mesh()
+GlMesh::~GlMesh()
 {
     glDeleteVertexArrays(1,&vertArray);
     glDeleteBuffers(1,&elemBuf);
     glDeleteBuffers(1,&arrBuf);
 }
 
-void mesh::SetElements(const uint32_t * elements, size_t numElements, GLenum usage)
+void GlMesh::setElements(const uint32_t * elements, size_t numElements, GLenum usage)
 {
     if (!vertArray) glGenVertexArrays(1, &vertArray);
     glBindVertexArray(vertArray);
@@ -22,7 +23,7 @@ void mesh::SetElements(const uint32_t * elements, size_t numElements, GLenum usa
     glBindVertexArray(0);
 }
 
-void mesh::SetVertices(const void * vertices, size_t vertexSize, size_t numVertices, GLenum usage)
+void GlMesh::setVertices(const void * vertices, size_t vertexSize, size_t numVertices, GLenum usage)
 {
     if (!arrBuf) glGenBuffers(1, &arrBuf);
     glBindBuffer(GL_ARRAY_BUFFER, arrBuf);
@@ -31,7 +32,7 @@ void mesh::SetVertices(const void * vertices, size_t vertexSize, size_t numVerti
     numVerts = numVertices;
 }
 
-void mesh::SetAttribute(GLuint loc, int size, GLenum type, bool normalized, size_t stride, const void * pointer)
+void GlMesh::setAttribute(GLuint loc, int size, GLenum type, bool normalized, size_t stride, const void * pointer)
 {
     if (!vertArray) glGenVertexArrays(1, &vertArray);
     glBindVertexArray(vertArray);
@@ -44,7 +45,7 @@ void mesh::SetAttribute(GLuint loc, int size, GLenum type, bool normalized, size
     glBindVertexArray(0);
 }
 
-void mesh::Draw() const
+void GlMesh::draw() const
 {
     if (!vertArray || numVerts == 0) return;
     glBindVertexArray(vertArray);
@@ -52,7 +53,7 @@ void mesh::Draw() const
     else glDrawArrays(GL_TRIANGLES, 0, numVerts);
 }
 
-shader::shader(GLenum type, const char * source) : shader()
+GlShader::GlShader(GLenum type, const char * source) : GlShader()
 {
     obj = glCreateShader(type);
     glShaderSource(obj, 1, &source, nullptr);
@@ -67,7 +68,7 @@ shader::shader(GLenum type, const char * source) : shader()
     }
 }
 
-program::program(shader _vs, shader _fs) : program()
+GlProgram::GlProgram(GlShader _vs, GlShader _fs) : GlProgram()
 {
     vs = std::move(_vs);
     fs = std::move(_fs);

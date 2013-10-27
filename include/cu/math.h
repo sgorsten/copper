@@ -1,9 +1,7 @@
 #ifndef COPPER_MATH_H
 #define COPPER_MATH_H
 
-#include <cmath>
-#include <cstdint>
-#include <functional>
+#include "util.h"
 
 namespace cu
 {
@@ -191,6 +189,10 @@ namespace cu
         a.x.z*(a.y.w*a.z.x*a.w.y + a.w.w*a.y.x*a.z.y + a.z.w*a.w.x*a.y.y - a.y.w*a.w.x*a.z.y - a.z.w*a.y.x*a.w.y - a.w.w*a.z.x*a.y.y) +
         a.x.w*(a.y.x*a.w.y*a.z.z + a.z.x*a.y.y*a.w.z + a.w.x*a.z.y*a.y.z - a.y.x*a.z.y*a.w.z - a.w.x*a.y.y*a.z.z - a.z.x*a.w.y*a.y.z);
     }
+
+    // Variadic multiply functions allow composition of many quaternions or matrices
+    template<class T, class... R> vec<T,4> qmul(const vec<T,4> & a, const R... r) { return qmul(a, qmul(r...)); }
+    template<class T, int M, int N, class... R> auto mul(const mat<T,M,N> & a, const R... r) -> decltype(mul(a, mul(r...))) { return mul(a, mul(r...)); }
 }
 
 #endif

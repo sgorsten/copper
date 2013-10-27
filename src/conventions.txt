@@ -1,0 +1,50 @@
+Proposed naming conventions (nothing set in stone at this point)
+
+Namespaces
+==========
+
+Namespaces should be used for all library identifiers. They should be kept as short as possible, use only lowercase characters, and be abbreviated if at all possible. For precedent, consult std::, boost::, ci::, cv::, etc. Unless there is a strong reason to do otherwise, we will avoid nesting namespaces, which is not as convenient in C++ as it is in, for instance, C#.
+
+libcopper will make use of the cu:: namespace, and its headers will be reachable via #include <cu/*.h>.
+
+Macros
+======
+
+Macros should be avoided whenever possible. One notable exception is include guards, which we will use for all header files. Macros we define in includable header files will be prefixed with COPPER_.
+
+User-defined Types
+==================
+
+Concrete types (structs, classes, unions, enums) should be named a noun phrase, in PascalCase. They should be kept short but descriptive.
+	Precedent: C#/Java/Many other modern object-oriented languages
+	Examples: cu::JsonValue, cu::GlMesh
+
+Type templates should be named a noun phrase, in stl_case. Again, they should be kept short but descriptive, with conventional abbreviations used when possible (ptr, ref, etc). 
+	Precedent: std::vector<T>, std::shared_ptr<T>, std::map<K,V>
+	Examples: cu::vec<T,M>, cu::mat<T,M,N>, cu::tabbed_ref<T>
+
+In general, classes should be used for types which enforce an invariant condition, while structs should be used for types for simple aggregates for which any valid assignment to their members is a valid instance of the type. Additionally, structs should be used whenever an "interface" type is defined. Structs should never have private members.
+	Examples: struct cu::vec/cu::mat - Simple aggregation of elements
+	          class cu::JsonValue - Must be exactly one of seven basic Json value types
+
+Variables, parameters, and fields
+=================================
+
+Variables should be named a noun phrase, in camelCase. They should be kept short but descriptive. Using camelCase for variables and PascalCase for a variable which is the only meaningful instance of a given type in a scope to be named the same as the type without creating any masking. For instance, Pose pose, or Mesh mesh.
+
+Functions
+=========
+
+Function names should also be written in camelCase when multiple words are required. However, functions in general should strive for very terse names, which do not duplicate any of the context provided by their signatures and parameter names. For instance, intersection(ray,sphere) rather than raySphereIntersection(ray,sphere). They should follow one of a number of patterns:
+
+Pure functions: Name them a noun phrase indicating what they compute
+	Examples: length, sum, intersection, union
+	
+Pure functions which produce bool: Name them an adjective phrase indicating what applies in the true case
+	Examples: empty, valid, ready, locked, moving, ownsResources
+
+Functions which modify their arguments: Name them an imperative verb phrase describing what effects the function has
+	Examples: set, clear, add, remove
+
+Note: If the function has inputs or outputs other than its arguments (global context, side effects, etc), its name should incorporate which external systems are involved.
+	Examples: drawToScreen(), writeToDisk(), readSystemClock()
