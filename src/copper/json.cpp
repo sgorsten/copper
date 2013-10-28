@@ -101,8 +101,42 @@ namespace cu
 
     bool isJsonNumber(const std::string & num)
     {
-        static const std::regex regex(R"(-?(0|([1-9][0-9]*))((\.[0-9]+)?)(((e|E)((\+|-)?)[0-9]+)?))");
-        return std::regex_match(begin(num), end(num), regex);
+        auto it=begin(num);
+        if(it == end(num)) return false;
+
+        if(*it == '-') ++it;
+        if(it == end(num)) return false;
+
+        if(*it == '0') ++it;
+        else if(isdigit(*it)) { while(it != end(num) && isdigit(*it)) ++it; }
+        else return false;
+
+        if(it == end(num)) return true;
+
+        if(*it == '.')
+	{
+          ++it;
+          if(it == end(num)) return false;
+          
+          while(it != end(num) && isdigit(*it)) ++it;
+          if(it == end(num)) return true;
+        } 
+
+	if(*it == 'e' || *it == 'E')
+	{
+	  ++it;
+          if(it == end(num)) return false;
+
+	  if(*it == '+' || *it == '-') ++it;
+          if(it == end(num)) return false;
+
+	  while(it != end(num) && isdigit(*it)) ++it;
+	  if(it == end(num)) return true;
+	}
+
+	return it == end(num);
+        //static const std::regex regex(R"(-?(0|([1-9][0-9]*))((\.[0-9]+)?)(((e|E)((\+|-)?)[0-9]+)?))");
+	//        return std::regex_match(begin(num), end(num), regex);
     }
 
     static uint16_t decode_hex(char ch) {

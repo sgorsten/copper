@@ -29,7 +29,7 @@ namespace cu
                             JsonValue(Kind kind, std::string str)       : kind(kind), str(move(str)) {}
     public:
                             JsonValue()                                 : kind(Null) {}                 // Default construct null
-                            JsonValue(nullptr_t)                        : kind(Null) {}                 // Construct null from nullptr
+                            JsonValue(std::nullptr_t)                   : kind(Null) {}                 // Construct null from nullptr
                             JsonValue(bool b)                           : kind(b ? True : False) {}     // Construct true or false from boolean
                             JsonValue(const char * s)                   : JsonValue(String, s) {}           // Construct String from C-string
                             JsonValue(std::string s)                    : JsonValue(String, move(s)) {}     // Construct String from std::string
