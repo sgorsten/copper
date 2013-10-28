@@ -101,42 +101,36 @@ namespace cu
 
     bool isJsonNumber(const std::string & num)
     {
-        auto it=begin(num);
-        if(it == end(num)) return false;
+    #ifdef __GNUC__
+        auto it=begin(num); if(it == end(num)) return false;                   // String cannot be empty
+        if(*it == '-') ++it; if(it == end(num)) return false;                  // Discard optional - at start of string
 
-        if(*it == '-') ++it;
-        if(it == end(num)) return false;
+        if(*it == '0') ++it;                                                   // Whole number part can be 0
+        else if(isdigit(*it)) { while(it != end(num) && isdigit(*it)) ++it; }  // or [1-9][0-9]*
+        else return false;                                                     // but anything else fails the match
+        if(it == end(num)) return true;                                        // Acceptable to stop here
 
-        if(*it == '0') ++it;
-        else if(isdigit(*it)) { while(it != end(num) && isdigit(*it)) ++it; }
-        else return false;
-
-        if(it == end(num)) return true;
-
-        if(*it == '.')
-	{
-          ++it;
-          if(it == end(num)) return false;
-          
-          while(it != end(num) && isdigit(*it)) ++it;
-          if(it == end(num)) return true;
+        if(*it == '.')                                                         // If there is a .
+        {
+            ++it; if(it == end(num)) return false;                             // We need at least one more digit
+            while(it != end(num) && isdigit(*it)) ++it;                        // Skip all digits
+            if(it == end(num)) return true;                                    // Acceptable to stop here
         } 
 
-	if(*it == 'e' || *it == 'E')
-	{
-	  ++it;
-          if(it == end(num)) return false;
+        if(*it == 'e' || *it == 'E')                                           // If there is an e or an E
+        {
+            ++it; if(it == end(num)) return false;                             // We need the exponent term
+            if(*it == '+' || *it == '-') ++it;                                 // Skip +/-
+            if(it == end(num)) return false;                                   // We still need the exponent term
+            while(it != end(num) && isdigit(*it)) ++it;                        // Skip all digits
+            if(it == end(num)) return true;                                    // Acceptable to stop here
+        }
 
-	  if(*it == '+' || *it == '-') ++it;
-          if(it == end(num)) return false;
-
-	  while(it != end(num) && isdigit(*it)) ++it;
-	  if(it == end(num)) return true;
-	}
-
-	return it == end(num);
-        //static const std::regex regex(R"(-?(0|([1-9][0-9]*))((\.[0-9]+)?)(((e|E)((\+|-)?)[0-9]+)?))");
-	//        return std::regex_match(begin(num), end(num), regex);
+        return false;                                                          // Anything left over fails the match
+    #else
+        static const std::regex regex(R"(-?(0|([1-9][0-9]*))((\.[0-9]+)?)(((e|E)((\+|-)?)[0-9]+)?))");
+	    return std::regex_match(begin(num), end(num), regex);
+    #endif
     }
 
     static uint16_t decode_hex(char ch) {
