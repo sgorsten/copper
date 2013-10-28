@@ -2,6 +2,7 @@
 #define COPPER_DRAW_H
 
 #include "math.h"
+#include <vector>
 
 #define GLEW_STATIC
 #include <GL/glew.h>

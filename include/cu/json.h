@@ -1,7 +1,10 @@
 #ifndef COPPER_JSON_H
 #define COPPER_JSON_H
 
-#include "util.h"
+#include <cstdint>
+#include <cassert>
+#include <sstream>
+#include <vector>
 
 namespace cu 
 {
@@ -73,6 +76,8 @@ namespace cu
     std::ostream & operator << (std::ostream & out, const JsonArray & arr);
     std::ostream & operator << (std::ostream & out, const JsonObject & obj);
 
+    template<class T> struct tabbed_ref { const T & value; int tabWidth, indent; };
+    template<class T> tabbed_ref<T> tabbed(const T & value, int tabWidth, int indent = 0) { return{ value, tabWidth, indent }; }
     std::ostream & operator << (std::ostream & out, tabbed_ref<JsonValue> val);
     std::ostream & operator << (std::ostream & out, tabbed_ref<JsonArray> arr);
     std::ostream & operator << (std::ostream & out, tabbed_ref<JsonObject> obj);

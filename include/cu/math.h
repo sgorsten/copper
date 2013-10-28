@@ -1,7 +1,9 @@
 #ifndef COPPER_MATH_H
 #define COPPER_MATH_H
 
-#include "util.h"
+#include <cmath>
+#include <cstdint>
+#include <functional>
 
 namespace cu
 {

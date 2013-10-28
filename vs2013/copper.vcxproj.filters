@@ -4,7 +4,7 @@
     <ClInclude Include="..\include\cu\json.h" />
     <ClInclude Include="..\include\cu\math.h" />
     <ClInclude Include="..\include\cu\draw.h" />
-    <ClInclude Include="..\include\cu\util.h" />
+    <ClInclude Include="..\src\copper\common.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\copper\json.cpp" />
