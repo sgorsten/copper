@@ -5,6 +5,7 @@
     <ClInclude Include="..\include\cu\math.h" />
     <ClInclude Include="..\include\cu\draw.h" />
     <ClInclude Include="..\src\copper\common.h" />
+    <ClInclude Include="..\include\cu\refl.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\copper\json.cpp" />
