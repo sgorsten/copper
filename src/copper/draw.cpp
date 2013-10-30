@@ -1,5 +1,6 @@
 #include "common.h"
 #include "cu/draw.h"
+#include <cassert>
 
 using namespace cu;
 
@@ -8,6 +9,18 @@ GlMesh::~GlMesh()
     glDeleteVertexArrays(1,&vertArray);
     glDeleteBuffers(1,&elemBuf);
     glDeleteBuffers(1,&arrBuf);
+}
+
+GlMesh & GlMesh::operator = (GlMesh && r) 
+{
+    std::swap(vertArray, r.vertArray); 
+    std::swap(arrBuf, r.arrBuf); 
+    std::swap(elemBuf, r.elemBuf); 
+    numVerts = r.numVerts; 
+    numElems = r.numElems;
+    emode = r.emode;
+    itype = r.itype; 
+    return *this; 
 }
 
 void GlMesh::setElements(const void * elements, size_t indexSize, size_t elemSize, size_t numElements, GLenum usage)
@@ -23,7 +36,7 @@ void GlMesh::setElements(const void * elements, size_t indexSize, size_t elemSiz
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexSize*elemSize*numElements, elements, usage);
     glBindVertexArray(0);
 
-    mode = elemSize == 3 ? GL_TRIANGLES : GL_LINES;
+    emode = elemSize == 3 ? GL_TRIANGLES : GL_LINES;
     itype = indexSize == 4 ? GL_UNSIGNED_INT : indexSize == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_BYTE;
     numElems = elemSize * numElements;
 }
@@ -45,7 +58,7 @@ void GlMesh::setAttribute(int loc, std::nullptr_t)
     glBindVertexArray(0);
 }
 
-void GlMesh::setAttribute(int loc, int size, GLenum type, bool normalized, size_t stride, const void * pointer)
+void GlMesh::setAttribute(int loc, int size, GLenum type, bool normalized, size_t stride, ptrdiff_t offset)
 {
     if (!vertArray) glGenVertexArrays(1, &vertArray);
     glBindVertexArray(vertArray);
@@ -53,7 +66,7 @@ void GlMesh::setAttribute(int loc, int size, GLenum type, bool normalized, size_
     if (!arrBuf) glGenBuffers(1, &arrBuf);
     glBindBuffer(GL_ARRAY_BUFFER, arrBuf);
     glEnableVertexAttribArray(loc);
-    glVertexAttribPointer(loc, size, type, normalized ? GL_TRUE : GL_FALSE, stride, pointer);
+    glVertexAttribPointer(loc, size, type, normalized ? GL_TRUE : GL_FALSE, stride, reinterpret_cast<const GLvoid *>(offset));
 
     glBindVertexArray(0);
 }
@@ -62,8 +75,8 @@ void GlMesh::draw() const
 {
     if (!vertArray || numVerts == 0) return;
     glBindVertexArray(vertArray);
-    if (numElems > 0) glDrawElements(mode, numElems, itype, 0);
-    else glDrawArrays(mode, 0, numVerts);
+    if (numElems > 0) glDrawElements(emode, numElems, itype, 0);
+    else glDrawArrays(emode, 0, numVerts);
 }
 
 GlShader::GlShader(GLenum type, const char * source) : GlShader()

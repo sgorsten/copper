@@ -1,3 +1,4 @@
+// geometry module - Provides support for common computational geometry algorithms, and useful utility types
 #ifndef COPPER_GEOM_H
 #define COPPER_GEOM_H
 

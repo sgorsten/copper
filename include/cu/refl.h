@@ -1,3 +1,4 @@
+// reflection module - Makes use of library and user-defined visit_members(...) functions to support limited reflection and serialization
 #ifndef COPPER_REFL_H
 #define COPPER_REFL_H
 

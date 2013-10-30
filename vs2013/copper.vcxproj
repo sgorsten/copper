@@ -24,6 +24,7 @@
     <ClInclude Include="..\include\cu\json.h" />
     <ClInclude Include="..\include\cu\math.h" />
     <ClInclude Include="..\include\cu\mesh.h" />
+    <ClInclude Include="..\include\cu\plat.h" />
     <ClInclude Include="..\include\cu\refl.h" />
     <ClInclude Include="..\src\copper\common.h" />
   </ItemGroup>
@@ -36,6 +37,7 @@
     </ClCompile>
     <ClCompile Include="..\src\copper\draw.cpp" />
     <ClCompile Include="..\src\copper\json.cpp" />
+    <ClCompile Include="..\src\copper\plat.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{F36DDC54-4BF9-40D9-9D85-DE7D5510ACAC}</ProjectGuid>

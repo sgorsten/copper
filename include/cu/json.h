@@ -1,3 +1,4 @@
+// json module: Provides support for parsing and printing JSON from an intermediate in-memory representation
 #ifndef COPPER_JSON_H
 #define COPPER_JSON_H
 

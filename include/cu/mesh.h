@@ -1,5 +1,9 @@
+// mesh module - Contains utilities for building and manipulating various mesh representations
 #ifndef COPPER_MESH_H
 #define COPPER_MESH_H
+
+#include "math.h"
+#include <vector>
 
 namespace cu
 {
@@ -9,10 +13,10 @@ namespace cu
     // Compute vertex normals by averaging the geometric normals of all triangles that meet at a given vertex
     template<class T, class V, class I> void computeNormals(std::vector<V> & verts, const std::vector<vec<I,3>> & tris, vec<T,3> V::*normal, const vec<T,3> V::*position)
     {
-        setField(verts, normal, cu::vec<T,3>());
+        setField(verts, normal, vec<T,3>());
         for (auto & t : tris)
         {
-            auto & v0 = verts[t.x], &v1 = verts[t.y], &v2 = verts[t.z];
+            auto & v0 = verts[t.x], & v1 = verts[t.y], & v2 = verts[t.z];
             auto n = norm(cross(v1.*position - v0.*position, v2.*position - v0.*position));
             v0.*normal += n; v1.*normal += n; v2.*normal += n;
         }

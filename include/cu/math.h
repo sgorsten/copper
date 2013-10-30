@@ -1,3 +1,4 @@
+// math module: Provides lightweight vector/matrix types along with a variety of common linear algebra functions
 #ifndef COPPER_MATH_H
 #define COPPER_MATH_H
 

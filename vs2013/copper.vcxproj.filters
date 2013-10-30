@@ -8,10 +8,12 @@
     <ClInclude Include="..\include\cu\refl.h" />
     <ClInclude Include="..\include\cu\geom.h" />
     <ClInclude Include="..\include\cu\mesh.h" />
+    <ClInclude Include="..\include\cu\plat.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\copper\json.cpp" />
     <ClCompile Include="..\src\copper\draw.cpp" />
     <ClCompile Include="..\src\copper\common.cpp" />
+    <ClCompile Include="..\src\copper\plat.cpp" />
   </ItemGroup>
 </Project>
