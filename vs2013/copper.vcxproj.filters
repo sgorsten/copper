@@ -6,6 +6,8 @@
     <ClInclude Include="..\include\cu\draw.h" />
     <ClInclude Include="..\src\copper\common.h" />
     <ClInclude Include="..\include\cu\refl.h" />
+    <ClInclude Include="..\include\cu\geom.h" />
+    <ClInclude Include="..\include\cu\mesh.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\copper\json.cpp" />

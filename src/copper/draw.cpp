@@ -10,17 +10,22 @@ GlMesh::~GlMesh()
     glDeleteBuffers(1,&arrBuf);
 }
 
-void GlMesh::setElements(const uint32_t * elements, size_t numElements, GLenum usage)
+void GlMesh::setElements(const void * elements, size_t indexSize, size_t elemSize, size_t numElements, GLenum usage)
 {
+    assert(indexSize == 1 || indexSize == 2 || indexSize == 4);
+    assert((elemSize == 2 || elemSize == 3) && "elemSize must be 2 (lines) or 3 (triangles)");
+
     if (!vertArray) glGenVertexArrays(1, &vertArray);
     glBindVertexArray(vertArray);
 
     if (!elemBuf) glGenBuffers(1, &elemBuf);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elemBuf);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t)*numElements, elements, usage);
-    numElems = numElements;
-
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexSize*elemSize*numElements, elements, usage);
     glBindVertexArray(0);
+
+    mode = elemSize == 3 ? GL_TRIANGLES : GL_LINES;
+    itype = indexSize == 4 ? GL_UNSIGNED_INT : indexSize == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_BYTE;
+    numElems = elemSize * numElements;
 }
 
 void GlMesh::setVertices(const void * vertices, size_t vertexSize, size_t numVertices, GLenum usage)
@@ -32,7 +37,15 @@ void GlMesh::setVertices(const void * vertices, size_t vertexSize, size_t numVer
     numVerts = numVertices;
 }
 
-void GlMesh::setAttribute(GLuint loc, int size, GLenum type, bool normalized, size_t stride, const void * pointer)
+void GlMesh::setAttribute(int loc, std::nullptr_t)
+{
+    if (!vertArray) glGenVertexArrays(1, &vertArray);
+    glBindVertexArray(vertArray);
+    glDisableVertexAttribArray(loc);
+    glBindVertexArray(0);
+}
+
+void GlMesh::setAttribute(int loc, int size, GLenum type, bool normalized, size_t stride, const void * pointer)
 {
     if (!vertArray) glGenVertexArrays(1, &vertArray);
     glBindVertexArray(vertArray);
@@ -49,8 +62,8 @@ void GlMesh::draw() const
 {
     if (!vertArray || numVerts == 0) return;
     glBindVertexArray(vertArray);
-    if (numElems > 0) glDrawElements(GL_TRIANGLES, numElems, GL_UNSIGNED_INT, 0);
-    else glDrawArrays(GL_TRIANGLES, 0, numVerts);
+    if (numElems > 0) glDrawElements(mode, numElems, itype, 0);
+    else glDrawArrays(mode, 0, numVerts);
 }
 
 GlShader::GlShader(GLenum type, const char * source) : GlShader()

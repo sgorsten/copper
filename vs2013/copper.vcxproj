@@ -20,8 +20,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\cu\draw.h" />
+    <ClInclude Include="..\include\cu\geom.h" />
     <ClInclude Include="..\include\cu\json.h" />
     <ClInclude Include="..\include\cu\math.h" />
+    <ClInclude Include="..\include\cu\mesh.h" />
     <ClInclude Include="..\include\cu\refl.h" />
     <ClInclude Include="..\src\copper\common.h" />
   </ItemGroup>
