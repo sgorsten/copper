@@ -1,79 +1,93 @@
-#include "cu/math.h"
-#include "cu/json.h"
+#include <cu/geom.h>
+#include <cu/mesh.h>
+#include <cu/plat.h>
+#include <cu/refl.h>
+
 #include <iostream>
 
 using namespace cu;
 
-int main()
+// Define and reflect a simple vertex type
+struct ColorVertex { float2 pos; float3 col; };
+template<class F> void visit_fields(ColorVertex & o, F f) { f("pos",o.pos); f("col",o.col); }
+
+int main(int argc, char * argv[])
 {
-    // We have convenient linear algebra types available
-    float3x4 a = mul(float3x2(), float2x4()) + float3x4();
-    float4x2 b = mul(float4x3(), float3x2()) - float4x2();
-    float2x3 c = mul(float2x4(), float4x3()) * 2.0f;
-    float4x4 d = mul(float4x4(), float4x4()) / 3.0f;
-    float2x4 e = transpose(float4x2());
-    auto x = 0.6f, y = 0.8f;
-    auto f = inv(float2x2{{x,-y}, {y,x}});
-    auto g = inv(float3x3{{x,0,-y}, {0,1,0}, {y,0,x}});
-    auto h = inv(float4x4{{1,0,0,0}, {0,x,0,-y}, {0,0,1,0}, {0,y,0,x}});
-    float4x4 i = {{g.x,0}, {g.y,0}, {g.z,0}, {0,0,0,1}};
-    auto m = mul(float2x4(), float4x3(), float3x3(), float3x2(), float2x4(), float4());
-    auto q = qmul(float4(), float4(), float4(), float4());
-
-    // We can parse JSON from a string
-    auto parsed_value = jsonFrom(R"(
+    try
     {
-        "firstName": "John",
-        "lastName": "Smith",
-        "age": 25,
-        "isEmployed": true,
-        "spouse": null,
-        "address": {
-            "streetAddress": "21 2nd Street",
-            "city": "New York",
-            "state": "NY",
-            "postalCode": 10021
-        },
-        "phoneNumbers": [
-            {
-                "type": "home",
-                "number": "212 555-1234"
-            },
-            {
-                "type": "fax",
-                "number": "646 555-4567"
-            }
-        ]
-    })");
+        Window window("Basic App", { 512, 512 });
+        window.WriteGlVersion(std::cout);
 
-    // We can also construct it using initializer lists                
-    JsonValue literal_value = JsonObject{
-        {"firstName", "John"},
-        {"lastName", "Smith"},
-        {"age", 25},
-        {"isEmployed", true},
-        {"spouse", nullptr},
-        {"address", JsonObject{
-            {"streetAddress", "21 2nd Street"},
-            {"city", "New York"},
-            {"state", "NY"},
-            {"postalCode", 10021}
-        }},
-        {"phoneNumbers", JsonArray{
-            JsonObject{
-                {"type", "home"},
-                {"number", "212 555-1234"}
-            },
-            JsonObject{
-                {"type", "fax"},
-                {"number", "646 555-4567"}
-            }
-        }}
-    };
+        // Load a simple shader that interpolates vertex colors
+        GlProgram prog = {
+            { GL_VERTEX_SHADER, R"(
+                #version 330
+                uniform mat4 u_transform;
+                layout(location = 0) in vec4 v_position;
+                layout(location = 1) in vec4 v_color;
+                out vec4 color;
+                void main()
+                {
+                    gl_Position = u_transform * v_position;
+                    color       = v_color;
+                }
+            )" },
+            { GL_FRAGMENT_SHADER, R"(
+                #version 330
+                in vec4 color;
+                layout(location = 0) out vec4 f_color;
+                void main()
+                {
+                    f_color = color;
+                }
+            )" }
+        };
 
-    // We can easily print our json::values back into JSON
-    std::cout << "Parsed value = " << tabbed(parsed_value,2) << std::endl;
-    std::cout << "Literal value = " << tabbed(literal_value,2) << std::endl;
-    std::cout << "Are literals equal? " << (parsed_value == literal_value ? "yes" : "no") << std::endl;
-    return 0;
+        // Load a triangle mesh from a JSON-based format
+        auto triMesh = decodeJson<TriMesh<ColorVertex, uint16_t>>(R"(
+        {
+            "verts":[
+                {"pos":[0,0], "col":[0.7,0.7,0.7]},
+                {"pos":[-0.86,-0.5], "col":[1,0,0]},
+                {"pos":[ 0.00,-1.0], "col":[1,1,0]},
+                {"pos":[ 0.86,-0.5], "col":[0,1,0]},
+                {"pos":[ 0.86, 0.5], "col":[0,1,1]},
+                {"pos":[ 0.00, 1.0], "col":[0,0,1]},
+                {"pos":[-0.86, 0.5], "col":[1,0,1]}
+            ],
+            "tris":[[0,1,2],[0,2,3],[0,3,4],[0,4,5],[0,5,6],[0,6,1]]
+        })");
+
+        // Create a renderable mesh, using .pos as attrib 0 and .col as attrib 1
+        auto mesh = GlMesh(triMesh.verts, triMesh.tris, &ColorVertex::pos, &ColorVertex::col);
+
+        bool quit = false;
+        while (!quit)
+        {
+            SDL_Event e;
+            while (SDL_PollEvent(&e))
+            {
+                switch (e.type)
+                {
+                case SDL_QUIT:
+                    quit = true;
+                    break;
+                }
+            }
+
+            Pose pose = qrotation(float3(0, 0, 1), SDL_GetTicks()*0.003f);
+
+            glClear(GL_COLOR_BUFFER_BIT);
+            prog.use();
+            prog.uniform("u_transform", pose.matrix());
+            mesh.draw();
+            window.SwapBuffers();
+        }
+        return 0;
+    }
+    catch (const std::exception & e)
+    {
+        std::cerr << "Caught exception: " << e.what() << std::endl;
+        return -1;
+    }
 }

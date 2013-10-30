@@ -40,6 +40,7 @@ int main(int argc, char * argv[])
     try
     {
         Window window("Graphics App", {640,480});
+        window.WriteGlVersion(std::cout);
 
         GlProgram unlitProg = {
             {GL_VERTEX_SHADER, R"(

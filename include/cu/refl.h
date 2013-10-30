@@ -24,6 +24,8 @@ namespace cu
     template<class T> JsonValue toJson(const vec<T, 3> & vec) { return JsonArray{ toJson(vec.x), toJson(vec.y), toJson(vec.z) }; }
     template<class T> JsonValue toJson(const vec<T, 2> & vec) { return JsonArray{ toJson(vec.x), toJson(vec.y) }; }
     inline JsonValue toJson(const std::string & s) { return s; }
+    inline JsonValue toJson(int16_t             n) { return n; }
+    inline JsonValue toJson(uint16_t            n) { return n; }
     inline JsonValue toJson(int32_t             n) { return n; }
     inline JsonValue toJson(uint32_t            n) { return n; }
     inline JsonValue toJson(int64_t             n) { return n; }
@@ -43,6 +45,8 @@ namespace cu
     template<class T> void fromJson(vec<T, 3> & vec, const JsonValue & val) { fromJson(vec.x, val[0]); fromJson(vec.y, val[1]); fromJson(vec.z, val[2]); }
     template<class T> void fromJson(vec<T, 2> & vec, const JsonValue & val) { fromJson(vec.x, val[0]); fromJson(vec.y, val[1]); }
     inline void fromJson(std::string & s, const JsonValue & val) { s = val.string(); }
+    inline void fromJson(int16_t     & n, const JsonValue & val) { n = val.number<int32_t >(); }
+    inline void fromJson(uint16_t    & n, const JsonValue & val) { n = val.number<uint32_t>(); }
     inline void fromJson(int32_t     & n, const JsonValue & val) { n = val.number<int32_t >(); }
     inline void fromJson(uint32_t    & n, const JsonValue & val) { n = val.number<uint32_t>(); }
     inline void fromJson(int64_t     & n, const JsonValue & val) { n = val.number<int64_t >(); }
