@@ -54,10 +54,9 @@ namespace cu
     template<class T> std::string encodeJson(const T & obj) { std::ostringstream ss; ss << toJson(obj); return ss.str(); }
     template<class T> T decodeJson(const std::string & text) { T obj; fromJson(obj, jsonFrom(text)); return obj; }
 
-    // Support UserTypes as follows: template<class F> void visit_fields(UserType & o, F f) { f("alpha", o.alpha); f("beta", o.beta); ... }
-    template<class T, class F> void visit_fields(vec<T, 2> & o, F f) { f("x", o.x); f("y", o.y); }
-    template<class T, class F> void visit_fields(vec<T, 3> & o, F f) { f("x", o.x); f("y", o.y); f("z", o.z); }
-    template<class T, class F> void visit_fields(vec<T, 4> & o, F f) { f("x", o.x); f("y", o.y); f("z", o.z); f("w", o.w); }
+    // Support UserTypes as follows: 
+    //   template<class F> void visit_fields(UserType & o, F f) { f("alpha", o.alpha); f("beta", o.beta); ... }
+    //   See numerous examples throughout library
 }
 
 #endif

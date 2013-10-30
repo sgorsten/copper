@@ -18,6 +18,8 @@ namespace cu
         template<class F> vec   apply(const vec & r, F f) const     { return {f(x,r.x), f(y,r.y)}; }
         template<class F> vec   apply(T r, F f) const               { return {f(x,r), f(y,r)}; }
     };
+    template<class T, class F> void visit_fields(vec<T,2> & o, F f) { f("x", o.x); f("y", o.y); }
+
     template<class T> struct vec<T,3>
     {
         T                       x, y, z;
@@ -29,6 +31,8 @@ namespace cu
         template<class F> vec   apply(const vec & r, F f) const     { return {f(x,r.x), f(y,r.y), f(z,r.z)}; }
         template<class F> vec   apply(T r, F f) const               { return {f(x,r), f(y,r), f(z,r)}; }
     };
+    template<class T, class F> void visit_fields(vec<T,3> & o, F f) { f("x", o.x); f("y", o.y); f("z", o.z); }
+
     template<class T> struct vec<T,4>
     {
         T                       x, y, z, w;
@@ -42,6 +46,7 @@ namespace cu
         template<class F> vec   apply(const vec & r, F f) const     { return {f(x,r.x), f(y,r.y), f(z,r.z), f(w,r.w)}; }
         template<class F> vec   apply(T r, F f) const               { return {f(x,r), f(y,r), f(z,r), f(w,r)}; }
     };
+    template<class T, class F> void visit_fields(vec<T,4> & o, F f) { f("x", o.x); f("y", o.y); f("z", o.z); f("w", o.w); }
 
     template<class T, int M> auto operator -  (const vec<T,M> & a) -> vec<T, M>                     { return a.apply(T(), [](T x, T) { return -x; }); }
     template<class T, int M> auto operator +  (const vec<T,M> & a, const vec<T,M> & b) -> vec<T,M>  { return a.apply(b, std::plus      <T>()); }
@@ -97,6 +102,8 @@ namespace cu
         template<class F> mat   apply(const mat & r, F f) const     { return {x.apply(r.x,f), y.apply(r.y,f)}; }
         template<class F> mat   apply(T r, F f) const               { return {x.apply(r,f), y.apply(r,f)}; }
     };
+    template<class T, int M, class F> void visit_fields(mat<T,M,2> & o, F f) { f("x", o.x); f("y", o.y); }
+
     template<class T, int M> struct mat<T,M,3>
     {
         typedef vec<T,M>        U;
@@ -111,6 +118,8 @@ namespace cu
         template<class F> mat   apply(const mat & r, F f) const     { return {x.apply(r.x,f), y.apply(r.y,f), z.apply(r.z,f)}; }
         template<class F> mat   apply(T r, F f) const               { return {x.apply(r,f), y.apply(r,f), z.apply(r,f)}; }
     };
+    template<class T, int M, class F> void visit_fields(mat<T,M,3> & o, F f) { f("x", o.x); f("y", o.y); f("z", o.z); }
+
     template<class T, int M> struct mat<T,M,4>
     {
         typedef vec<T,M>        U;
@@ -125,6 +134,7 @@ namespace cu
         template<class F> mat   apply(const mat & r, F f) const     { return {x.apply(r.x,f), y.apply(r.y,f), z.apply(r.z,f), w.apply(r.w,f)}; }
         template<class F> mat   apply(T r, F f) const               { return {x.apply(r,f), y.apply(r,f), z.apply(r,f), w.apply(r,f)}; }
     };
+    template<class T, int M, class F> void visit_fields(mat<T,M,4> & o, F f) { f("x", o.x); f("y", o.y); f("z", o.z); f("w", o.w); }
 
     template<class T, int M, int N> auto operator - (const mat<T,M,N> & a) -> mat<T,M,N>                       { return a.apply(T(), [](T x, T) { return -x; }); }
     template<class T, int M, int N> auto operator + (const mat<T,M,N> & a, const mat<T,M,N> & b) -> mat<T,M,N> { return a.apply(b, std::plus      <T>()); }

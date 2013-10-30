@@ -43,6 +43,7 @@ namespace cu
         float3      ydir() const                                   { return qydir(orientation); } // Equivalent to transformVector({0,1,0})
         float3      zdir() const                                   { return qzdir(orientation); } // Equivalent to transformVector({0,0,1})
     };
+    template<class F> void visit_fields(Pose & o, F f) { f("position", o.position); f("orientation", o.orientation); }
 }
 
 #endif
