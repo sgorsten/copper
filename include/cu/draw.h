@@ -12,6 +12,22 @@ namespace cu
 {
     template<class C, class T> ptrdiff_t fieldOffset(const T C::*field) { return reinterpret_cast<ptrdiff_t>(&(reinterpret_cast<const C *>(0)->*field)); }
 
+    class GlTexture
+    {
+        friend class GlProgram;
+        GLuint obj;
+
+        GlTexture(const GlTexture & r) = delete;
+        GlTexture & operator = (const GlTexture & r) = delete;
+    public:
+        GlTexture() : obj() {}
+        GlTexture(GLenum format, uint2 dims, int mips, const void * pixels);
+        GlTexture(GlTexture && r) : obj(r.obj) { r.obj = 0; }
+        ~GlTexture() { glDeleteTextures(1,&obj); }
+
+        GlTexture & operator = (GlTexture && r) { std::swap(obj, r.obj); return *this; }
+    };
+
     class GlMesh
     {
         GLuint vertArray, arrBuf, elemBuf;
@@ -76,7 +92,7 @@ namespace cu
         void use() const { glUseProgram(obj); }
         void uniform(const char * name, const float4x4 & mat) const { glUniformMatrix4fv(glGetUniformLocation(obj, name), 1, GL_FALSE, &mat.x.x); }
         void uniform(const char * name, const float3 & vec) const { glUniform3fv(glGetUniformLocation(obj, name), 1, &vec.x); }
-
+        void uniform(const char * name, GLuint unit, const GlTexture & tex) const { glActiveTexture(GL_TEXTURE0+unit); glBindTexture(GL_TEXTURE_2D, tex.obj); glUniform1i(glGetUniformLocation(obj, name), unit); }
         GlProgram & operator = (GlProgram && r) { std::swap(obj, r.obj); return *this; }
     };
 }

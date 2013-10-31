@@ -67,6 +67,7 @@ namespace cu
     template<class T, int M> auto operator *= (vec<T,M> & a, T b) -> vec<T,M> &                     { return a=a*b; }
     template<class T, int M> auto operator /= (vec<T,M> & a, T b) -> vec<T,M> &                     { return a=a/b; }
 
+    template<class T>        auto cross   (const vec<T,2> & a, const vec<T,2> & b) -> T             { return a.x*b.y - a.y*b.x; }
     template<class T>        auto cross   (const vec<T,3> & a, const vec<T,3> & b) -> vec<T,3>      { return {a.y*b.z-a.z*b.y, a.z*b.x-a.x*b.z, a.x*b.y-a.y*b.x}; }
     template<class T>        auto dot     (const vec<T,2> & a, const vec<T,2> & b) -> T             { return a.x*b.x + a.y*b.y; }
     template<class T>        auto dot     (const vec<T,3> & a, const vec<T,3> & b) -> T             { return a.x*b.x + a.y*b.y + a.z*b.z; }

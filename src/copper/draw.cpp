@@ -4,6 +4,32 @@
 
 using namespace cu;
 
+GlTexture::GlTexture(GLenum format, uint2 dims, int mips, const void * pixels) : GlTexture()
+{
+    uint2 blockSize; int blockBytes;
+    switch (format)
+    {
+    case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT: blockSize = uint2(4, 4); blockBytes = 8; break;
+    case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT: blockSize = uint2(4, 4); blockBytes = 16; break;
+    case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT: blockSize = uint2(4, 4); blockBytes = 16; break;
+    default: throw std::runtime_error("GlTexture(...) - Unexpected format");
+    }
+
+    auto bytes = reinterpret_cast<const uint8_t *>(pixels);
+    glGenTextures(1, &obj);
+    glBindTexture(GL_TEXTURE_2D, obj);
+    uint2 mipSize = dims;
+    for (GLint mip = 0; mip<mips; ++mip)
+    {
+        const auto blocks = (mipSize+blockSize-1U)/blockSize;
+        const auto mipBytes = blocks.x*blocks.y*blockBytes;
+        glCompressedTexImage2D(GL_TEXTURE_2D, mip, format, mipSize.x, mipSize.y, 0, mipBytes, bytes);
+        bytes += mipBytes;
+        mipSize = (mipSize + uint2(1, 1)) / 2U;
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
 GlMesh::~GlMesh()
 {
     glDeleteVertexArrays(1,&vertArray);

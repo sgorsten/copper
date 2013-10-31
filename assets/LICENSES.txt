@@ -1,0 +1,20 @@
+This directory contains several assets that to the best of my knowledge are freely redistributable under the terms of their respective licenses. The licenses have been retained in their original form, and are presented following a list of the form {filename1, filename2, ...} describing the files to which they apply.
+
+
+
+{greenwall_albedo.dds, greenwall_normal.dds}
+
+This texture set is copyrighted (c) 2008 Gregor Koch.
+
+The Textures a free to use for any non commercial use.
+
+The texture set can be used partly or complete as long as this text file is included and accessible. The textures can be edited and changed as long as the source of the original is mentioned and properly credited.
+
+This Textures my not be mass distribute via any non-electronic means, 
+Including but not limited to compact disks, DVDs and floppy disks without a previous promotion from Gregor Koch.
+
+Commercial use or use is prohibited unless a written permission is obtained in advanced from Gregor Koch.
+
+For commercial use or use pleas contact Gregor Koch licences@maxstudios.de or cronos@ghmk.de.
+
+Have fun with the use of these textures :)
