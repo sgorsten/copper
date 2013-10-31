@@ -4,14 +4,26 @@
 
 using namespace cu;
 
+GlSampler::GlSampler(GLenum magFilter, GLenum minFilter, GLenum wrapMode) : GlSampler()
+{
+    glGenSamplers(1,&obj);
+    glSamplerParameteri(obj, GL_TEXTURE_MAG_FILTER, magFilter);
+    glSamplerParameteri(obj, GL_TEXTURE_MIN_FILTER, minFilter);
+    glSamplerParameteri(obj, GL_TEXTURE_WRAP_S, wrapMode);
+    glSamplerParameteri(obj, GL_TEXTURE_WRAP_T, wrapMode);
+}
+
 GlTexture::GlTexture(GLenum format, uint2 dims, int mips, const void * pixels) : GlTexture()
 {
+    bool compressed = false;
     uint2 blockSize; int blockBytes;
     switch (format)
     {
-    case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT: blockSize = uint2(4, 4); blockBytes = 8; break;
-    case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT: blockSize = uint2(4, 4); blockBytes = 16; break;
-    case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT: blockSize = uint2(4, 4); blockBytes = 16; break;
+    case GL_RGB:  case GL_BGR:  blockSize = uint2(1, 1); blockBytes = 3; break;
+    case GL_RGBA: case GL_BGRA: blockSize = uint2(1, 1); blockBytes = 4; break;
+    case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT: compressed = true; blockSize = uint2(4, 4); blockBytes = 8; break;
+    case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT: compressed = true; blockSize = uint2(4, 4); blockBytes = 16; break;
+    case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT: compressed = true; blockSize = uint2(4, 4); blockBytes = 16; break;
     default: throw std::runtime_error("GlTexture(...) - Unexpected format");
     }
 
@@ -23,10 +35,12 @@ GlTexture::GlTexture(GLenum format, uint2 dims, int mips, const void * pixels) :
     {
         const auto blocks = (mipSize+blockSize-1U)/blockSize;
         const auto mipBytes = blocks.x*blocks.y*blockBytes;
-        glCompressedTexImage2D(GL_TEXTURE_2D, mip, format, mipSize.x, mipSize.y, 0, mipBytes, bytes);
+        if (compressed) glCompressedTexImage2D(GL_TEXTURE_2D, mip, format, mipSize.x, mipSize.y, 0, mipBytes, bytes);
+        else glTexImage2D(GL_TEXTURE_2D, mip, format, mipSize.x, mipSize.y, 0, format, GL_UNSIGNED_BYTE, bytes);
         bytes += mipBytes;
         mipSize = (mipSize + uint2(1, 1)) / 2U;
     }
+
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 

@@ -44,6 +44,8 @@ struct Object
     GlProgram * prog;
     GlMesh      mesh;
     Pose        pose;
+    GlTexture * texAlbedo, * texNormal;
+    GlSampler * samp;
 };
 
 int main(int argc, char * argv[])
@@ -116,7 +118,7 @@ int main(int argc, char * argv[])
                 void main()
                 {
                     vec3 tsNormal = texture(u_texNormal, texCoord)*2 - 1;
-                    vec3 vsNormal = normalize(tangent * tsNormal.x + bitangent * tsNormal.y + normal * tsNormal.z);
+                    vec3 vsNormal = normalize(normalize(tangent) * tsNormal.x + normalize(bitangent) * tsNormal.y + normalize(normal) * tsNormal.z);
 
                     vec3 lightDir = normalize(u_lightPos - position);
                     vec3 eyeDir   = normalize(-position);
@@ -135,11 +137,20 @@ int main(int argc, char * argv[])
         auto texAlbedo = loadTextureFromDdsFile("../../assets/greenwall_albedo.dds");
         auto texNormal = loadTextureFromDdsFile("../../assets/greenwall_normal.dds");
 
+        const ubyte4 checkerboardPixels[] = { { 32, 32, 32, 255 }, { 255, 255, 255, 255 }, { 255, 255, 255, 255 }, { 32, 32, 32, 255 } };
+        auto texCheckerboardAlbedo = GlTexture(GL_RGBA, { 2, 2 }, 1, checkerboardPixels);
+
+        const ubyte4 flatNormal = {127,127,255,255};        
+        auto texFlatNormal = GlTexture(GL_RGBA, { 1, 1 }, 1, &flatNormal);
+
+        auto sampNearest = GlSampler(GL_NEAREST, GL_NEAREST, GL_REPEAT);
+        auto sampLinear = GlSampler(GL_LINEAR, GL_LINEAR, GL_REPEAT);
+
         // Define scene
         Object objs[] = {
-            {&litProg,   glMesh(normalBox({1.2f, 1.0f, 0.8f})),                       float3(0, 0,-4)},
-            {&unlitProg, glMesh(colorBox({0.2f, 0.2f, 0.2f}, {255, 255, 127, 255})), float3(0, 4,-8)},
-            {&litProg,   glMesh(normalBox(float3(8, 1, 8))),                          float3(0,-2,-4)}
+            {&litProg,   glMesh(normalBox({1.2f, 1.0f, 0.8f})),                       float3(0, 0,-4), &texAlbedo, &texNormal, &sampLinear},
+            {&unlitProg, glMesh(colorBox({0.2f, 0.2f, 0.2f}, {255, 255, 127, 255})),  float3(0, 4,-8), 0, 0, 0},
+            {&litProg,   glMesh(normalBox(float3(8,1,8))),                            float3(0,-2,-4), &texCheckerboardAlbedo, &texFlatNormal, &sampNearest}
         };
 
         float t=0;
@@ -217,8 +228,8 @@ int main(int argc, char * argv[])
                 obj.prog->uniform("u_matClipFromModel", mul(clipFromView, viewFromModel));
                 obj.prog->uniform("u_matViewFromModel", viewFromModel);
                 obj.prog->uniform("u_lightPos", transformCoord(viewFromWorld, objs[1].pose.position));
-                obj.prog->uniform("u_texAlbedo", 0, texAlbedo);
-                obj.prog->uniform("u_texNormal", 1, texNormal);
+                if(obj.texAlbedo) obj.prog->uniform("u_texAlbedo", 0, *obj.texAlbedo, *obj.samp);
+                if(obj.texNormal) obj.prog->uniform("u_texNormal", 1, *obj.texNormal, *obj.samp);
                 obj.mesh.draw();
             }
             

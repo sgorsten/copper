@@ -12,6 +12,22 @@ namespace cu
 {
     template<class C, class T> ptrdiff_t fieldOffset(const T C::*field) { return reinterpret_cast<ptrdiff_t>(&(reinterpret_cast<const C *>(0)->*field)); }
 
+    class GlSampler
+    {
+        friend class GlProgram;
+        GLuint obj;
+
+        GlSampler(const GlSampler & r) = delete;
+        GlSampler & operator = (const GlSampler & r) = delete;
+    public:
+        GlSampler() : obj() {}
+        GlSampler(GLenum magFilter, GLenum minFilter, GLenum wrapMode);
+        GlSampler(GlSampler && r) : obj(r.obj) { r.obj = 0; }
+        ~GlSampler() { glDeleteSamplers(1, &obj); }
+
+        GlSampler & operator = (GlSampler && r) { std::swap(obj, r.obj); return *this; }
+    };
+
     class GlTexture
     {
         friend class GlProgram;
@@ -92,7 +108,7 @@ namespace cu
         void use() const { glUseProgram(obj); }
         void uniform(const char * name, const float4x4 & mat) const { glUniformMatrix4fv(glGetUniformLocation(obj, name), 1, GL_FALSE, &mat.x.x); }
         void uniform(const char * name, const float3 & vec) const { glUniform3fv(glGetUniformLocation(obj, name), 1, &vec.x); }
-        void uniform(const char * name, GLuint unit, const GlTexture & tex) const { glActiveTexture(GL_TEXTURE0+unit); glBindTexture(GL_TEXTURE_2D, tex.obj); glUniform1i(glGetUniformLocation(obj, name), unit); }
+        void uniform(const char * name, GLuint unit, const GlTexture & tex, const GlSampler & samp) const { glActiveTexture(GL_TEXTURE0+unit); glBindTexture(GL_TEXTURE_2D, tex.obj); glUniform1i(glGetUniformLocation(obj, name), unit); glBindSampler(unit, samp.obj); }
         GlProgram & operator = (GlProgram && r) { std::swap(obj, r.obj); return *this; }
     };
 }
