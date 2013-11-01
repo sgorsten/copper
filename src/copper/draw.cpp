@@ -4,23 +4,29 @@
 
 using namespace cu;
 
-GlSampler::GlSampler(GLenum magFilter, GLenum minFilter, GLenum wrapMode) : GlSampler()
+GlSampler::GlSampler(GLenum magFilter, GLenum minFilter, GLenum wrapMode, bool isShadow) : GlSampler()
 {
     glGenSamplers(1,&obj);
     glSamplerParameteri(obj, GL_TEXTURE_MAG_FILTER, magFilter);
     glSamplerParameteri(obj, GL_TEXTURE_MIN_FILTER, minFilter);
     glSamplerParameteri(obj, GL_TEXTURE_WRAP_S, wrapMode);
     glSamplerParameteri(obj, GL_TEXTURE_WRAP_T, wrapMode);
+    if (isShadow)
+    {
+        glSamplerParameteri(obj, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+        glSamplerParameteri(obj, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+    }
 }
 
 GlTexture::GlTexture(GLenum format, uint2 dims, int mips, const void * pixels) : GlTexture()
 {
     bool compressed = false;
-    uint2 blockSize; int blockBytes;
+    uint2 blockSize; int blockBytes; GLenum pixelFormat; GLenum pixelType;
     switch (format)
     {
-    case GL_RGB:  case GL_BGR:  blockSize = uint2(1, 1); blockBytes = 3; break;
-    case GL_RGBA: case GL_BGRA: blockSize = uint2(1, 1); blockBytes = 4; break;
+    case GL_RGB:  case GL_BGR:  blockSize = uint2(1, 1); blockBytes = 3; pixelFormat = GL_RGBA; pixelType = GL_UNSIGNED_BYTE; break;
+    case GL_RGBA: case GL_BGRA: blockSize = uint2(1, 1); blockBytes = 4; pixelFormat = GL_RGBA; pixelType = GL_UNSIGNED_BYTE; break;
+    case GL_DEPTH_COMPONENT: blockSize = uint2(1, 1); blockBytes = 4; pixelFormat = GL_DEPTH_COMPONENT; pixelType = GL_FLOAT; break;
     case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT: compressed = true; blockSize = uint2(4, 4); blockBytes = 8; break;
     case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT: compressed = true; blockSize = uint2(4, 4); blockBytes = 16; break;
     case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT: compressed = true; blockSize = uint2(4, 4); blockBytes = 16; break;
@@ -36,7 +42,7 @@ GlTexture::GlTexture(GLenum format, uint2 dims, int mips, const void * pixels) :
         const auto blocks = (mipSize+blockSize-1U)/blockSize;
         const auto mipBytes = blocks.x*blocks.y*blockBytes;
         if (compressed) glCompressedTexImage2D(GL_TEXTURE_2D, mip, format, mipSize.x, mipSize.y, 0, mipBytes, bytes);
-        else glTexImage2D(GL_TEXTURE_2D, mip, format, mipSize.x, mipSize.y, 0, format, GL_UNSIGNED_BYTE, bytes);
+        else glTexImage2D(GL_TEXTURE_2D, mip, format, mipSize.x, mipSize.y, 0, pixelFormat, pixelType, bytes);
         bytes += mipBytes;
         mipSize = (mipSize + uint2(1, 1)) / 2U;
     }

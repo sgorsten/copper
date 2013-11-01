@@ -14,14 +14,14 @@ namespace cu
 
     class GlSampler
     {
-        friend class GlProgram;
+        friend class GlTexture;
         GLuint obj;
 
         GlSampler(const GlSampler & r) = delete;
         GlSampler & operator = (const GlSampler & r) = delete;
     public:
         GlSampler() : obj() {}
-        GlSampler(GLenum magFilter, GLenum minFilter, GLenum wrapMode);
+        GlSampler(GLenum magFilter, GLenum minFilter, GLenum wrapMode, bool isShadow);
         GlSampler(GlSampler && r) : obj(r.obj) { r.obj = 0; }
         ~GlSampler() { glDeleteSamplers(1, &obj); }
 
@@ -40,6 +40,10 @@ namespace cu
         GlTexture(GLenum format, uint2 dims, int mips, const void * pixels);
         GlTexture(GlTexture && r) : obj(r.obj) { r.obj = 0; }
         ~GlTexture() { glDeleteTextures(1,&obj); }
+
+        GLuint _name() const { return obj; }
+
+        void bind(GLuint unit, const GlSampler & samp) const { glActiveTexture(GL_TEXTURE0 + unit); glBindTexture(GL_TEXTURE_2D, obj); glBindSampler(unit, samp.obj); } // Warning: This command affects global GL state
 
         GlTexture & operator = (GlTexture && r) { std::swap(obj, r.obj); return *this; }
     };
@@ -92,6 +96,14 @@ namespace cu
         GlShader & operator = (GlShader && r) { std::swap(obj, r.obj); return *this; }
     };
 
+    // Warning: These commands affect global GL state
+    inline void SetUniform(GLint loc, int val) { glUniform1i(loc, val); }
+    inline void SetUniform(GLint loc, float val) { glUniform1f(loc, val); }
+    inline void SetUniform(GLint loc, const float2 & val) { glUniform2fv(loc, 1, &val.x); }
+    inline void SetUniform(GLint loc, const float3 & val) { glUniform3fv(loc, 1, &val.x); }
+    inline void SetUniform(GLint loc, const float4 & val) { glUniform4fv(loc, 1, &val.x); }
+    inline void SetUniform(GLint loc, const float4x4 & val) { glUniformMatrix4fv(loc, 1, GL_FALSE, &val.x.x); }
+
     class GlProgram
     {
         GLuint obj;
@@ -105,10 +117,8 @@ namespace cu
         GlProgram(GlProgram && r) : obj(r.obj) { r.obj = 0; }
         ~GlProgram() { glDeleteProgram(obj); }
 
-        void use() const { glUseProgram(obj); }
-        void uniform(const char * name, const float4x4 & mat) const { glUniformMatrix4fv(glGetUniformLocation(obj, name), 1, GL_FALSE, &mat.x.x); }
-        void uniform(const char * name, const float3 & vec) const { glUniform3fv(glGetUniformLocation(obj, name), 1, &vec.x); }
-        void uniform(const char * name, GLuint unit, const GlTexture & tex, const GlSampler & samp) const { glActiveTexture(GL_TEXTURE0+unit); glBindTexture(GL_TEXTURE_2D, tex.obj); glUniform1i(glGetUniformLocation(obj, name), unit); glBindSampler(unit, samp.obj); }
+        void use() const { glUseProgram(obj); } // Warning: This command affects global GL state
+        template<class T> void uniform(const char * name, const T & val) const { SetUniform(glGetUniformLocation(obj, name), val); }
         GlProgram & operator = (GlProgram && r) { std::swap(obj, r.obj); return *this; }
     };
 }
