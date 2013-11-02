@@ -30,7 +30,7 @@ namespace cu
 
     class GlTexture
     {
-        friend class GlProgram;
+        friend class GlFramebuffer;
         GLuint obj;
 
         GlTexture(const GlTexture & r) = delete;
@@ -46,6 +46,31 @@ namespace cu
         void bind(GLuint unit, const GlSampler & samp) const { glActiveTexture(GL_TEXTURE0 + unit); glBindTexture(GL_TEXTURE_2D, obj); glBindSampler(unit, samp.obj); } // Warning: This command affects global GL state
 
         GlTexture & operator = (GlTexture && r) { std::swap(obj, r.obj); return *this; }
+    };
+
+    class GlFramebuffer
+    {
+        uint2 dims;
+        GLuint obj, rbo;
+        std::vector<GlTexture> textures;
+
+        GlFramebuffer(const GlFramebuffer & r) = delete;
+        GlFramebuffer & operator = (const GlFramebuffer & r) = delete;
+    public:
+        GlFramebuffer(uint2 dims = uint2()) : dims(dims), obj(), rbo() {}
+        GlFramebuffer(uint2 dims, GLenum colorFormat, size_t numColorTextures, GLenum depthStencilFormat, bool hasDepthStencilTexture);
+        GlFramebuffer(GlFramebuffer && r) : dims(r.dims), obj(r.obj), rbo(r.rbo), textures(move(r.textures)) { r.obj = r.rbo = 0; }
+        ~GlFramebuffer() { glDeleteFramebuffers(1, &obj); glDeleteRenderbuffers(1, &rbo); }
+
+        const uint2 & dimensions() const { return dims; }       
+        const GlTexture & texture(size_t index) const { return textures[index]; }
+        void bind() const { glBindFramebuffer(GL_DRAW_FRAMEBUFFER, obj); glViewport(0, 0, dims.x, dims.y); }
+
+        GlFramebuffer & operator = (GlFramebuffer && r) { dims = r.dims; std::swap(obj, r.obj); std::swap(rbo, r.rbo); textures = move(r.textures); return *this; }
+
+        static GlFramebuffer imageBuffer(uint2 dims, GLenum format)                     { return GlFramebuffer(dims, format, 1, 0, false); } // Buffer with one color texture and no depth buffer, suitable for post-processing passes
+        static GlFramebuffer shadowBuffer(uint2 dims)                                   { return GlFramebuffer(dims, 0, 0, GL_DEPTH_COMPONENT, true); } // Buffer with depth texture but no color attachments, suitable for shadow maps
+        static GlFramebuffer geometryBuffer(uint2 dims, GLenum format, int channels)    { return GlFramebuffer(dims, format, channels, GL_DEPTH_COMPONENT, false); } // Buffer with depth buffer and arbitrary number of color textures, for deferred lighting style G-buffers
     };
 
     class GlMesh

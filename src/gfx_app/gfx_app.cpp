@@ -44,7 +44,7 @@ template<class I> GlMesh glMesh(const TriMesh<ColorVertex,I> & mesh) { return Gl
 
 struct Material
 {
-    std::shared_ptr<GlProgram> prog;
+    std::shared_ptr<GlProgram> prog, shadowProg;
     std::shared_ptr<const GlTexture> texAlbedo, texNormal;
     std::shared_ptr<const GlSampler> samp;
 };
@@ -88,6 +88,11 @@ int main(int argc, char * argv[])
                 }
             )"}
         ));
+
+        // Program which renders only geometry for static meshes, useful for shadow mapping
+        auto geoOnlyProg = shared(GlProgram(
+            { GL_VERTEX_SHADER,   "#version 330\n uniform mat4 u_matClipFromModel;\n layout(location = 0) in vec3 v_position;\n void main() { gl_Position = u_matClipFromModel * vec4(v_position,1); }"},
+            { GL_FRAGMENT_SHADER, "#version 330\n void main() {}" }));
 
         auto litProg = shared(GlProgram(
             {GL_VERTEX_SHADER, R"(
@@ -149,42 +154,14 @@ int main(int argc, char * argv[])
             )"}
         ));
 
-        auto fsProg = GlProgram(
-            {GL_VERTEX_SHADER, R"(
-                #version 330
-                layout(location = 0) in vec4 v_position;
-                layout(location = 1) in vec2 v_texCoord;
-                out vec2 texCoord;
-                void main()
-                {
-                    gl_Position = v_position;
-                    texCoord    = v_texCoord;
-                }
-            )" },
-            { GL_FRAGMENT_SHADER, R"(
-                #version 330
-                uniform sampler2D u_texture;
-                in vec2 texCoord;
-                layout(location = 0) out vec4 f_color;
-                void main()
-                {
-                    f_color = texture(u_texture, texCoord);
-                }
-            )" }
-        );
-        struct TexVertex { float2 pos,tc; };
-        std::vector<TexVertex> fsVerts = {{{-1,-1}, {0,0}}, {{1,-1}, {1,0}}, {{1,1}, {1,1}}, {{-1,1}, {0,1}}};
-        std::vector<ubyte3> fsTris = {{0,1,2}, {0,2,3}};
-        auto fsMesh = GlMesh(fsVerts, fsTris, &TexVertex::pos, &TexVertex::tc);
-
         auto sampNearest = shared(GlSampler(GL_NEAREST, GL_NEAREST, GL_REPEAT, false));
         auto sampLinear = shared(GlSampler(GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR, GL_REPEAT, false));
         auto sampShadow = shared(GlSampler(GL_LINEAR, GL_LINEAR, GL_CLAMP, true));
 
         const ubyte4 checkerboardPixels[] = { { 32, 32, 32, 255 }, { 255, 255, 255, 255 }, { 255, 255, 255, 255 }, { 32, 32, 32, 255 } }, flatNormal = { 127, 127, 255, 255 };
-        Material matCheckerboard = { litProg, shared(GlTexture(GL_RGBA, {2,2}, 1, checkerboardPixels)), shared(GlTexture(GL_RGBA, {1,1}, 1, &flatNormal)), sampNearest };
-        Material matGreenwall = {litProg, shared(loadTextureFromDdsFile("../../assets/greenwall_albedo.dds")), shared(loadTextureFromDdsFile("../../assets/greenwall_normal.dds")), sampLinear};
-        Material matLight = {unlitProg, 0, 0, 0};
+        Material matCheckerboard = { litProg, geoOnlyProg, shared(GlTexture(GL_RGBA, { 2, 2 }, 1, checkerboardPixels)), shared(GlTexture(GL_RGBA, { 1, 1 }, 1, &flatNormal)), sampNearest };
+        Material matGreenwall = { litProg, geoOnlyProg, shared(loadTextureFromDdsFile("../../assets/greenwall_albedo.dds")), shared(loadTextureFromDdsFile("../../assets/greenwall_normal.dds")), sampLinear };
+        Material matLight = {unlitProg, geoOnlyProg, 0, 0};
 
         auto brickBox = shared(glMesh(normalBox({ 1.2f, 1.0f, 0.8f })));
         auto groundBox = shared(glMesh(normalBox(float3(8, 1, 8))));
@@ -200,18 +177,8 @@ int main(int argc, char * argv[])
             { matGreenwall, brickBox, float3(+2, 0, -6) }
         };
 
-        GLuint fbo;
-
-        auto colorTex = GlTexture(GL_RGBA, uint2(256,256), 1, nullptr);
-        auto depthTex = GlTexture(GL_DEPTH_COMPONENT, uint2(256,256), 1, nullptr);
-        auto depthTex2 = GlTexture(GL_DEPTH_COMPONENT, uint2(256,256), 1, nullptr);
-
-        glGenFramebuffers(1,&fbo);
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, colorTex._name(), 0);
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthTex._name(), 0);
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) throw std::runtime_error("Framebuffer incomplete!");
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        auto fbScreen = GlFramebuffer(uint2(640,480));
+        auto fbShadow = GlFramebuffer::shadowBuffer(uint2(256,256));
 
         float t=0;
         Pose camPose;
@@ -274,21 +241,14 @@ int main(int argc, char * argv[])
                 objs[4].pose.orientation = qrotation(float3(0, 0, 1), t);
             }
 
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
-            glViewport(0, 0, 256, 256);
+            fbShadow.bind();
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            renderScene(objs, objs[1].pose, 1.0f, &depthTex2, *sampShadow, true);
+            renderScene(objs, objs[1].pose, 1.0f, 0, *sampShadow, true);
 
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-            glViewport(0, 0, 640, 480);
+            fbScreen.bind();
             glClearColor(0.2f, 0.6f, 1, 1);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            renderScene(objs, camPose, 1.333f, &depthTex, *sampShadow, false);
-
-            /*fsProg.use();
-            fsProg.uniform("u_texture", 0);
-            depthTex.bind(0, *sampNearest);
-            fsMesh.draw();*/
+            renderScene(objs, camPose, 1.333f, &fbShadow.texture(0), *sampShadow, false);
 
             window.SwapBuffers();
         }
@@ -327,22 +287,23 @@ void renderScene(const std::vector<Object> & objs, const Pose & camPose, float a
     {
         auto viewFromModel = mul(viewFromWorld, obj.pose.matrix());
 
-        obj.mat.prog->use();
-        obj.mat.prog->uniform("u_matClipFromModel", mul(clipFromView, viewFromModel));
-        obj.mat.prog->uniform("u_matViewFromModel", viewFromModel);
-        obj.mat.prog->uniform("u_lightPos", transformCoord(viewFromWorld, lightPose.position));
+        const auto & prog = depthTex ? *obj.mat.prog : *obj.mat.shadowProg;
 
-        obj.mat.prog->uniform("u_texAlbedo", 0);
-        obj.mat.prog->uniform("u_texNormal", 1);
-
-        if (obj.mat.texAlbedo) obj.mat.texAlbedo->bind(0, *obj.mat.samp);
-        if (obj.mat.texNormal) obj.mat.texNormal->bind(1, *obj.mat.samp);
+        prog.use();
+        prog.uniform("u_matClipFromModel", mul(clipFromView, viewFromModel));
 
         if (depthTex)
         {
-            obj.mat.prog->uniform("u_texShadow", 2);
+            prog.uniform("u_matViewFromModel", viewFromModel);
+            prog.uniform("u_lightPos", transformCoord(viewFromWorld, lightPose.position));
+            prog.uniform("u_lightMatrix", shadowTexFromView);
+            prog.uniform("u_texAlbedo", 0);
+            prog.uniform("u_texNormal", 1);
+            prog.uniform("u_texShadow", 2);
+
+            if (obj.mat.texAlbedo) obj.mat.texAlbedo->bind(0, *obj.mat.samp);
+            if (obj.mat.texNormal) obj.mat.texNormal->bind(1, *obj.mat.samp);
             depthTex->bind(2, sampShadow);
-            obj.mat.prog->uniform("u_lightMatrix", shadowTexFromView);
         }
 
         obj.mesh->draw();

@@ -50,6 +50,43 @@ GlTexture::GlTexture(GLenum format, uint2 dims, int mips, const void * pixels) :
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+GlFramebuffer::GlFramebuffer(uint2 dims, GLenum colorFormat, size_t numColorTextures, GLenum depthStencilFormat, bool hasDepthStencilTexture) : GlFramebuffer(dims)
+{
+    glGenFramebuffers(1, &obj);
+    glBindFramebuffer(GL_FRAMEBUFFER, obj);
+
+    std::vector<GLenum> drawBufs;
+    for (size_t i = 0; i < numColorTextures; ++i)
+    {
+        textures.emplace_back(colorFormat, dims, 1, nullptr);
+        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, textures.back().obj, 0);
+        drawBufs.push_back(GL_COLOR_ATTACHMENT0 + i);
+    }
+    if (!numColorTextures) glDrawBuffer(GL_NONE);
+
+    if (depthStencilFormat)
+    {
+        if (hasDepthStencilTexture)
+        {
+            textures.emplace_back(depthStencilFormat, dims, 1, nullptr);
+            glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, textures.back().obj, 0);
+        }
+        else
+        {
+            glGenRenderbuffers(1,&rbo);
+            glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+            glRenderbufferStorage(GL_RENDERBUFFER, depthStencilFormat, dims.x, dims.y);
+            glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo);
+        }
+    }
+    
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) throw std::runtime_error("Framebuffer incomplete!");
+    glDrawBuffers(drawBufs.size(), drawBufs.data());
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 GlMesh::~GlMesh()
 {
     glDeleteVertexArrays(1,&vertArray);
