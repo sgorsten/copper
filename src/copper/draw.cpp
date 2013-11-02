@@ -194,4 +194,112 @@ GlProgram::GlProgram(GlShader _vs, GlShader _fs) : GlProgram()
         std::string infolog(length, 0); glGetProgramInfoLog(obj, infolog.size(), nullptr, &infolog[0]);
         throw std::runtime_error("GLSL link error: " + infolog);
     }
+
+    // Obtain information about the active uniform blocks in the program
+    GLint numBlocks; glGetProgramiv(obj, GL_ACTIVE_UNIFORM_BLOCKS, &numBlocks);
+    for (GLuint i = 0; i < numBlocks; ++i)
+    {
+        GLint binding, dataSize, nameLength;
+        glGetActiveUniformBlockiv(obj, i, GL_UNIFORM_BLOCK_BINDING, &binding);
+        glGetActiveUniformBlockiv(obj, i, GL_UNIFORM_BLOCK_DATA_SIZE, &dataSize);
+        glGetActiveUniformBlockiv(obj, i, GL_UNIFORM_BLOCK_NAME_LENGTH, &nameLength);
+
+        std::string name(nameLength - 1, ' ');
+        glGetActiveUniformBlockName(obj, i, nameLength, nullptr, &name[0]);
+
+        BlockDesc bl;
+        bl.name = name;
+        bl.binding = binding;
+        bl.dataSize = dataSize;
+        desc.blocks.push_back(bl);
+    }
+
+    // Obtain information about the active uniforms in the program
+    GLint numUniforms; glGetProgramiv(obj, GL_ACTIVE_UNIFORMS, &numUniforms);
+    for (GLuint i = 0; i < numUniforms; ++i)
+    {
+        GLint type, size, nameLength, blockIndex;
+        glGetActiveUniformsiv(obj, 1, &i, GL_UNIFORM_TYPE, &type);
+        glGetActiveUniformsiv(obj, 1, &i, GL_UNIFORM_SIZE, &size);
+        glGetActiveUniformsiv(obj, 1, &i, GL_UNIFORM_NAME_LENGTH, &nameLength);
+        glGetActiveUniformsiv(obj, 1, &i, GL_UNIFORM_BLOCK_INDEX, &blockIndex);
+
+        UniformDesc un;
+        un.name.resize(nameLength-1);
+        un.size = uint3(1,1,size);
+        glGetActiveUniformName(obj, i, nameLength, nullptr, &un.name[0]);
+
+        switch (type)
+        {
+        case GL_FLOAT: un.type = UniformDesc::Float; break;
+        case GL_FLOAT_VEC2: un.type = UniformDesc::Float; un.size.x = 2; break;
+        case GL_FLOAT_VEC3: un.type = UniformDesc::Float; un.size.x = 3; break;
+        case GL_FLOAT_VEC4: un.type = UniformDesc::Float; un.size.x = 4; break;
+
+        case GL_DOUBLE: un.type = UniformDesc::Double; break;
+        case GL_DOUBLE_VEC2: un.type = UniformDesc::Double; un.size.x = 2; break;
+        case GL_DOUBLE_VEC3: un.type = UniformDesc::Double; un.size.x = 3; break;
+        case GL_DOUBLE_VEC4: un.type = UniformDesc::Double; un.size.x = 4; break;
+
+        case GL_INT: un.type = UniformDesc::Int; break;
+        case GL_INT_VEC2: un.type = UniformDesc::Int; un.size.x = 2; break;
+        case GL_INT_VEC3: un.type = UniformDesc::Int; un.size.x = 3; break;
+        case GL_INT_VEC4: un.type = UniformDesc::Int; un.size.x = 4; break;
+
+        case GL_UNSIGNED_INT: un.type = UniformDesc::UInt; break;
+        case GL_UNSIGNED_INT_VEC2: un.type = UniformDesc::UInt; un.size.x = 2; break;
+        case GL_UNSIGNED_INT_VEC3: un.type = UniformDesc::UInt; un.size.x = 3; break;
+        case GL_UNSIGNED_INT_VEC4: un.type = UniformDesc::UInt; un.size.x = 4; break;
+
+        case GL_BOOL: un.type = UniformDesc::Bool; break;
+        case GL_BOOL_VEC2: un.type = UniformDesc::Bool; un.size.x = 2; break;
+        case GL_BOOL_VEC3: un.type = UniformDesc::Bool; un.size.x = 3; break;
+        case GL_BOOL_VEC4: un.type = UniformDesc::Bool; un.size.x = 4; break;
+
+        case GL_FLOAT_MAT2: un.type = UniformDesc::Float; un.size.x = un.size.y = 2; break;
+        case GL_FLOAT_MAT3: un.type = UniformDesc::Float; un.size.x = un.size.y = 3; break;
+        case GL_FLOAT_MAT4: un.type = UniformDesc::Float; un.size.x = un.size.y = 4; break;
+        case GL_FLOAT_MAT2x3: un.type = UniformDesc::Float; un.size.x = 3; un.size.y = 2; break;
+        case GL_FLOAT_MAT2x4: un.type = UniformDesc::Float; un.size.x = 4; un.size.y = 2; break;
+        case GL_FLOAT_MAT3x2: un.type = UniformDesc::Float; un.size.x = 2; un.size.y = 3; break;
+        case GL_FLOAT_MAT3x4: un.type = UniformDesc::Float; un.size.x = 4; un.size.y = 3; break;
+        case GL_FLOAT_MAT4x2: un.type = UniformDesc::Float; un.size.x = 2; un.size.y = 4; break;
+        case GL_FLOAT_MAT4x3: un.type = UniformDesc::Float; un.size.x = 3; un.size.y = 4; break;
+
+        case GL_DOUBLE_MAT2: un.type = UniformDesc::Double; un.size.x = un.size.y = 2; break;
+        case GL_DOUBLE_MAT3: un.type = UniformDesc::Double; un.size.x = un.size.y = 3; break;
+        case GL_DOUBLE_MAT4: un.type = UniformDesc::Double; un.size.x = un.size.y = 4; break;
+        case GL_DOUBLE_MAT2x3: un.type = UniformDesc::Double; un.size.x = 3; un.size.y = 2; break;
+        case GL_DOUBLE_MAT2x4: un.type = UniformDesc::Double; un.size.x = 4; un.size.y = 2; break;
+        case GL_DOUBLE_MAT3x2: un.type = UniformDesc::Double; un.size.x = 2; un.size.y = 3; break;
+        case GL_DOUBLE_MAT3x4: un.type = UniformDesc::Double; un.size.x = 4; un.size.y = 3; break;
+        case GL_DOUBLE_MAT4x2: un.type = UniformDesc::Double; un.size.x = 2; un.size.y = 4; break;
+        case GL_DOUBLE_MAT4x3: un.type = UniformDesc::Double; un.size.x = 3; un.size.y = 4; break;
+
+        default:
+            if (blockIndex != -1) throw std::runtime_error("Unsupported type outside of uniform block in GLSL program: "+un.name);
+            else
+            {
+                SamplerDesc samp;
+                samp.name = un.name;
+                glGetUniformiv(obj, glGetUniformLocation(obj, samp.name.c_str()), (GLint*)&samp.binding);
+                desc.samplers.push_back(samp);
+            }
+            continue;
+        }
+        
+        if(blockIndex == -1) continue; // We do not currently support non-samplers outside of uniform blocks
+
+        // For uniforms that belong to a uniform block, determine their positioning and layout
+        GLint offset, arrayStride, matrixStride, isRowMajor;
+        glGetActiveUniformsiv(obj, 1, &i, GL_UNIFORM_OFFSET, &offset);
+        glGetActiveUniformsiv(obj, 1, &i, GL_UNIFORM_ARRAY_STRIDE, &arrayStride);
+        glGetActiveUniformsiv(obj, 1, &i, GL_UNIFORM_MATRIX_STRIDE, &matrixStride);
+        glGetActiveUniformsiv(obj, 1, &i, GL_UNIFORM_IS_ROW_MAJOR, &isRowMajor);
+
+        un.offset = offset;
+        un.stride = uint3(un.type == UniformDesc::Double ? 8 : 4, matrixStride > 0 ? matrixStride : 0, arrayStride > 0 ? arrayStride : 0);
+        if (isRowMajor) std::swap(un.stride.x, un.stride.y);
+        desc.blocks[blockIndex].uniforms.push_back(un);
+    }
 }

@@ -121,9 +121,14 @@ int main(int argc, char * argv[])
             )"},
             {GL_FRAGMENT_SHADER, R"(
                 #version 330
-                uniform sampler2D u_texAlbedo;
-                uniform sampler2D u_texNormal;
-                uniform sampler2DShadow	u_texShadow;
+                layout(binding = 0) uniform sampler2D u_texAlbedo;
+                layout(binding = 1) uniform sampler2D u_texNormal;
+                layout(binding = 8) uniform sampler2DShadow	u_texShadow;
+                layout(shared, binding = 4) uniform Lighting
+                {
+                    vec3 ambient;
+                    layout(row_major) mat3x4 woot[3];
+                };
                 uniform mat4 u_lightMatrix;
                 uniform vec3 u_lightPos;
                 in vec3 position;
@@ -144,7 +149,7 @@ int main(int argc, char * argv[])
                     vec3 eyeDir   = normalize(-position);
                     vec3 halfDir  = normalize(lightDir + eyeDir);
 
-                    vec3 light = vec3(0.2,0.2,0.2);
+                    vec3 light = ambient; //vec3(0.2,0.2,0.2);
                     light += lightColor * 0.8 * max(dot(lightDir, vsNormal), 0);
                     light += lightColor * pow(max(dot(halfDir, vsNormal), 0), 256);
 
@@ -179,6 +184,24 @@ int main(int argc, char * argv[])
 
         auto fbScreen = GlFramebuffer(uint2(640,480));
         auto fbShadow = GlFramebuffer::shadowBuffer(uint2(256,256));
+
+        // Report on uniforms
+        for (auto & samp : litProg->description().samplers)
+        {
+            std::cout << "sampler " << samp.name << " {binding=" << samp.binding << "}" << std::endl;
+        }
+
+        auto & block = litProg->description().blocks.front();
+        std::cout << "(0) " << block.name << " : byte[" << block.dataSize << "] {binding=" << block.binding << "}" << std::endl;
+        for (auto & un : block.uniforms)
+        {
+            const char * types[] = { "float", "double", "int", "uint", "bool" };
+            std::cout << "(0:" << un.offset << ") " << un.name << " : " << types[un.type];
+            if (un.size.x > 1) std::cout << un.size.x;
+            if (un.size.y > 1) std::cout << 'x' << un.size.y;
+            if (un.size.z > 1) std::cout << '[' << un.size.z << ']';
+            std::cout << " {stride=" << toJson(un.stride) << '}' << std::endl;
+        }
 
         float t=0;
         Pose camPose;
@@ -297,13 +320,10 @@ void renderScene(const std::vector<Object> & objs, const Pose & camPose, float a
             prog.uniform("u_matViewFromModel", viewFromModel);
             prog.uniform("u_lightPos", transformCoord(viewFromWorld, lightPose.position));
             prog.uniform("u_lightMatrix", shadowTexFromView);
-            prog.uniform("u_texAlbedo", 0);
-            prog.uniform("u_texNormal", 1);
-            prog.uniform("u_texShadow", 2);
 
             if (obj.mat.texAlbedo) obj.mat.texAlbedo->bind(0, *obj.mat.samp);
             if (obj.mat.texNormal) obj.mat.texNormal->bind(1, *obj.mat.samp);
-            depthTex->bind(2, sampShadow);
+            depthTex->bind(8, sampShadow);
         }
 
         obj.mesh->draw();

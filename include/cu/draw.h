@@ -129,22 +129,30 @@ namespace cu
     inline void SetUniform(GLint loc, const float4 & val) { glUniform4fv(loc, 1, &val.x); }
     inline void SetUniform(GLint loc, const float4x4 & val) { glUniformMatrix4fv(loc, 1, GL_FALSE, &val.x.x); }
 
+    struct SamplerDesc { std::string name; GLuint binding; };
+    struct UniformDesc { enum Type { Float, Double, Int, UInt, Bool }; std::string name; GLuint offset; Type type; uint3 size, stride; }; // x = row, y = column, z = array element
+    struct BlockDesc { std::string name; GLuint binding, dataSize; std::vector<UniformDesc> uniforms; };
+    struct ProgramDesc { std::vector<BlockDesc> blocks; std::vector<SamplerDesc> samplers; };
+
     class GlProgram
     {
         GLuint obj;
         GlShader vs, fs;
+        ProgramDesc desc;
 
         GlProgram(const GlProgram & r) = delete;
         GlProgram & operator = (const GlProgram & r) = delete;
     public:
         GlProgram() : obj() {}
         GlProgram(GlShader vs, GlShader fs);
-        GlProgram(GlProgram && r) : obj(r.obj) { r.obj = 0; }
+        GlProgram(GlProgram && r) : obj(r.obj), vs(std::move(r.vs)), fs(std::move(r.fs)), desc(r.desc) { r.obj = 0; }
         ~GlProgram() { glDeleteProgram(obj); }
 
+        const ProgramDesc & description() const { return desc; }
         void use() const { glUseProgram(obj); } // Warning: This command affects global GL state
+
         template<class T> void uniform(const char * name, const T & val) const { SetUniform(glGetUniformLocation(obj, name), val); }
-        GlProgram & operator = (GlProgram && r) { std::swap(obj, r.obj); return *this; }
+        GlProgram & operator = (GlProgram && r) { std::swap(obj, r.obj); vs=std::move(r.vs); fs=std::move(r.fs); desc=r.desc; return *this; }
     };
 }
 
