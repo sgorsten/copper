@@ -6,8 +6,8 @@
 
 namespace cu
 {
-    float3 transformVector(const float4x4 & transform, const float3 & vec) { return mul(transform, float4(vec, 0)).xyz(); }
-    float3 transformCoord(const float4x4 & transform, const float3 & coord) { auto r = mul(transform, float4(coord, 1)); return r.xyz() / r.w; }
+    inline float3 transformVector(const float4x4 & transform, const float3 & vec) { return mul(transform, float4(vec, 0)).xyz(); }
+    inline float3 transformCoord(const float4x4 & transform, const float3 & coord) { auto r = mul(transform, float4(coord, 1)); return r.xyz() / r.w; }
 
     // Maps x:right, y:up, z:back into x:[-1,+1], y:[-1,+1], z:[-1,+1] with a perspective transform
     template<class T> mat<T,4,4> perspectiveMatrixRhGl(T vertFieldOfViewRadians, T aspectWidthOverHeight, T nearClipDist, T farClipDist)

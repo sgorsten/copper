@@ -8,6 +8,8 @@
 #include <iostream>
 #include <memory>
 
+#include "render.h"
+
 template<class T> std::shared_ptr<T> shared(T && r) { return std::make_shared<T>(std::move(r)); }
 
 using namespace cu;
@@ -42,23 +44,6 @@ template<class I> GlMesh glMesh(const TriMesh<BasicVertex,I> & mesh) { return Gl
 template<class I> GlMesh glMesh(const TriMesh<NormalVertex, I> & mesh) { return GlMesh(mesh.verts, mesh.tris, &NormalVertex::pos, &NormalVertex::norm, &NormalVertex::tan, &NormalVertex::bitan, &NormalVertex::uv); }
 template<class I> GlMesh glMesh(const TriMesh<ColorVertex,I> & mesh) { return GlMesh(mesh.verts, mesh.tris, &ColorVertex::pos, &ColorVertex::col); }
 
-struct Material
-{
-    std::shared_ptr<GlProgram> prog, shadowProg;
-    std::shared_ptr<const GlTexture> texAlbedo, texNormal;
-    std::shared_ptr<const GlSampler> samp;
-};
-
-struct Object
-{
-    Material mat;
-    std::shared_ptr<const GlMesh> mesh;
-    Pose pose;
-};
-
-void renderScene(const std::vector<Object> & objs, const Pose & camPose, float aspect, const GlTexture * depthTex, const GlSampler & sampShadow, bool renderDepth, const UniformBlockDesc & block, GlUniformBuffer & ubo, 
-    const UniformBlockDesc & tblock, GlUniformBuffer & tubo);
-
 int main(int argc, char * argv[])
 {
     try
@@ -66,44 +51,8 @@ int main(int argc, char * argv[])
         Window window("Graphics App", {640,480});
         window.WriteGlVersion(std::cout);
 
-        auto vsPreamble = R"(
-            #version 330
-            layout(shared, binding = 0) uniform Transform
-            {
-                mat4 matClipFromModel;
-                mat4 matViewFromModel;
-            };
-        )";
-        auto fsPreamble = R"(   
-            #version 330
-            layout(shared, binding = 4) uniform Lighting
-            {
-                vec3 ambient;
-                vec3 lightPos;
-                mat4 lightMatrix;
-            };
-            layout(binding = 8) uniform sampler2DShadow	u_texShadow;
-
-            vec3 computeLighting(vec3 vsPosition, vec3 vsNormal)
-            {
-                vec3 eyeDir     = normalize(-vsPosition);
-                vec3 light      = ambient;
-
-                vec4 lsPos      = mul(lightMatrix,vec4(vsPosition,1));
-                vec3 lightColor = vec3(1,1,1) * shadow2DProj(u_texShadow, lsPos).r;
-
-                vec3 lightDir   = normalize(lightPos - vsPosition);
-                vec3 halfDir    = normalize(lightDir + eyeDir);
-
-                light += lightColor * 0.8 * max(dot(lightDir, vsNormal), 0);
-                light += lightColor * pow(max(dot(halfDir, vsNormal), 0), 256);
-
-                return light;
-            }
-        )";
-
         auto unlitProg = shared(GlProgram(
-            {GL_VERTEX_SHADER, {vsPreamble, R"(
+            {GL_VERTEX_SHADER, {g_vertShaderPreamble, R"(
                 layout(location = 0) in vec3 v_position;
                 layout(location = 1) in vec4 v_color;
                 out vec4 color;
@@ -113,7 +62,7 @@ int main(int argc, char * argv[])
                     color       = v_color;
                 }
             )"}},
-            {GL_FRAGMENT_SHADER, {fsPreamble, R"(
+            {GL_FRAGMENT_SHADER, {g_fragShaderPreamble, R"(
                 in vec4 color;
                 layout(location = 0) out vec4 f_color;
                 void main()
@@ -125,11 +74,11 @@ int main(int argc, char * argv[])
 
         // Program which renders only geometry for static meshes, useful for shadow mapping
         auto geoOnlyProg = shared(GlProgram(
-            { GL_VERTEX_SHADER, {vsPreamble, "layout(location = 0) in vec3 v_position;\nvoid main() { gl_Position = matClipFromModel * vec4(v_position,1); }"}},
-            { GL_FRAGMENT_SHADER, {fsPreamble, "void main() {}"}}));
+            { GL_VERTEX_SHADER, {g_vertShaderPreamble, "layout(location = 0) in vec3 v_position;\nvoid main() { gl_Position = matClipFromModel * vec4(v_position,1); }"}},
+            { GL_FRAGMENT_SHADER, {g_fragShaderPreamble, "void main() {}"}}));
 
         auto litProg = shared(GlProgram(
-            {GL_VERTEX_SHADER, {vsPreamble, R"(
+            {GL_VERTEX_SHADER, {g_vertShaderPreamble, R"(
                 layout(location = 0) in vec3 v_position;
                 layout(location = 1) in vec3 v_normal;
                 layout(location = 2) in vec3 v_tangent;
@@ -150,7 +99,7 @@ int main(int argc, char * argv[])
                     texCoord    = v_texCoord;
                 }
             )"}},
-            {GL_FRAGMENT_SHADER, {fsPreamble, R"(
+            {GL_FRAGMENT_SHADER, {g_fragShaderPreamble, R"(
                 layout(binding = 0) uniform sampler2D u_texAlbedo;
                 layout(binding = 1) uniform sampler2D u_texNormal;
                 in vec3 position;
@@ -223,6 +172,8 @@ int main(int argc, char * argv[])
         float t=0;
         Pose camPose;
 
+        Renderer renderer;
+
         bool quit = false, run = true;
         bool w={}, s={}, a={}, d={}, ml={};
         float yaw=0, pitch=0;
@@ -283,12 +234,12 @@ int main(int argc, char * argv[])
 
             fbShadow.bind();
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            renderScene(objs, objs[1].pose, 1.0f, 0, *sampShadow, true, *lightBlock, ubo, *transBlock, ubo2);
+            renderer.renderScene(objs, objs[1].pose, 1.0f, 0, *sampShadow, true);
 
             fbScreen.bind();
             glClearColor(0.2f, 0.6f, 1, 1);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            renderScene(objs, camPose, 1.333f, &fbShadow.texture(0), *sampShadow, false, *lightBlock, ubo, *transBlock, ubo2);
+            renderer.renderScene(objs, camPose, 1.333f, &fbShadow.texture(0), *sampShadow, false);
 
             window.SwapBuffers();
         }
@@ -298,57 +249,5 @@ int main(int argc, char * argv[])
     {
         std::cerr << "Caught exception: " << e.what() << std::endl;
         return -1;
-    }
-}
-
-void renderScene(const std::vector<Object> & objs, const Pose & camPose, float aspect, const GlTexture * depthTex, const GlSampler & sampShadow, bool renderDepth, const UniformBlockDesc & block, GlUniformBuffer & ubo,
-    const UniformBlockDesc & tblock, GlUniformBuffer & tubo)
-{
-    auto lightPose = objs[1].pose;
-
-    auto clipFromView = perspectiveMatrixRhGl(1.0f, aspect, 0.1f, 16.0f);
-    auto viewFromWorld = camPose.inverse().matrix();
-
-    auto shadowClipFromView = perspectiveMatrixRhGl(1.0f, 1.0f, 0.1f, 16.0f);
-    auto shadowViewFromWorld = lightPose.inverse().matrix();
-
-    // Compute matrix that goes from view space to biased shadow clip space
-    auto shadowTexFromClip = float4x4{{0.5f, 0, 0, 0}, {0, 0.5f, 0, 0}, {0, 0, 0.5f, 0}, {0.5f, 0.5f, 0.5f, 1}};
-    auto worldFromView = camPose.matrix();
-    auto shadowTexFromView = mul(shadowTexFromClip, shadowClipFromView, shadowViewFromWorld, worldFromView);
-
-    // Set up lighting UBO
-    std::vector<uint8_t> buffer(block.pack.size);
-    block.set(buffer, "ambient", float3(0.2, 0.2, 0.2));
-    block.set(buffer, "lightPos", transformCoord(viewFromWorld, lightPose.position));
-    block.set(buffer, "lightMatrix", shadowTexFromView);
-    ubo.setData(buffer, GL_STREAM_DRAW);
-
-    std::vector<uint8_t> tbuffer(tblock.pack.size);
-
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
-    if(!renderDepth) glCullFace(GL_BACK);
-    else glCullFace(GL_FRONT);
-
-    for (auto & obj : objs)
-    {
-        auto viewFromModel = mul(viewFromWorld, obj.pose.matrix());
-
-        const auto & prog = depthTex ? *obj.mat.prog : *obj.mat.shadowProg;
-
-        tblock.set(tbuffer, "matClipFromModel", mul(clipFromView, viewFromModel));
-        tblock.set(tbuffer, "matViewFromModel", viewFromModel);
-        tubo.setData(tbuffer, GL_DYNAMIC_DRAW);
-
-        prog.use();
-        if (depthTex)
-        {
-            if (obj.mat.texAlbedo) obj.mat.texAlbedo->bind(0, *obj.mat.samp);
-            if (obj.mat.texNormal) obj.mat.texNormal->bind(1, *obj.mat.samp);
-            depthTex->bind(8, sampShadow);
-        }
-
-        obj.mesh->draw();
     }
 }
