@@ -4,6 +4,7 @@
 
 #include "math.h"
 #include <vector>
+#include <cassert>
 
 #define GLEW_STATIC
 #include <GL/glew.h>
@@ -11,6 +12,24 @@
 namespace cu
 {
     template<class C, class T> ptrdiff_t fieldOffset(const T C::*field) { return reinterpret_cast<ptrdiff_t>(&(reinterpret_cast<const C *>(0)->*field)); }
+
+    class GlUniformBuffer
+    {
+        GLuint obj;
+
+        GlUniformBuffer(const GlUniformBuffer & r) = delete;
+        GlUniformBuffer & operator = (const GlUniformBuffer & r) = delete;
+    public:
+        GlUniformBuffer() : obj() {}
+        GlUniformBuffer(GlUniformBuffer && r) : obj(r.obj) { r.obj = 0; }
+        ~GlUniformBuffer() { glDeleteBuffers(1, &obj); }
+
+        void bind(GLuint index) const { glBindBufferBase(GL_UNIFORM_BUFFER, index, obj); } // Warning: This command affects global GL state
+
+        void setData(const void * data, size_t size, GLenum usage);
+
+        GlUniformBuffer & operator = (GlUniformBuffer && r) { std::swap(obj, r.obj); return *this; }
+    };
 
     class GlSampler
     {
@@ -40,8 +59,6 @@ namespace cu
         GlTexture(GLenum format, uint2 dims, int mips, const void * pixels);
         GlTexture(GlTexture && r) : obj(r.obj) { r.obj = 0; }
         ~GlTexture() { glDeleteTextures(1,&obj); }
-
-        GLuint _name() const { return obj; }
 
         void bind(GLuint unit, const GlSampler & samp) const { glActiveTexture(GL_TEXTURE0 + unit); glBindTexture(GL_TEXTURE_2D, obj); glBindSampler(unit, samp.obj); } // Warning: This command affects global GL state
 
@@ -130,9 +147,32 @@ namespace cu
     inline void SetUniform(GLint loc, const float4x4 & val) { glUniformMatrix4fv(loc, 1, GL_FALSE, &val.x.x); }
 
     struct SamplerDesc { std::string name; GLuint binding; };
-    struct UniformDesc { enum Type { Float, Double, Int, UInt, Bool }; std::string name; GLuint offset; Type type; uint3 size, stride; }; // x = row, y = column, z = array element
-    struct BlockDesc { std::string name; GLuint binding, dataSize; std::vector<UniformDesc> uniforms; };
-    struct ProgramDesc { std::vector<BlockDesc> blocks; std::vector<SamplerDesc> samplers; };
+    struct UniformDesc { enum Type { Float, Double, Int, UInt, Bool }; std::string name; GLuint offset; Type type; uint3 size, stride; 
+        static void write(uint8_t & dest, Type type, double value)
+        {
+            switch (type)
+            {
+            case Float: reinterpret_cast<float &>(dest) = static_cast<float>(value); break;
+            case Double: reinterpret_cast<double &>(dest) = value; break;
+            case Int: reinterpret_cast<int32_t &>(dest) = static_cast<int32_t>(value); break;
+            case UInt: reinterpret_cast<uint32_t &>(dest) = static_cast<uint32_t>(value); break;
+            case Bool: reinterpret_cast<int32_t &>(dest) = value ? 1 : 0; break;
+            default: assert(false);
+            }
+        }
+        template<class T> void set(uint8_t * buffer, uint3 index, const T & value) const { if (index.x < size.x && index.y < size.y && index.z < size.z) write(buffer[offset + dot(index,stride)], type, static_cast<double>(value)); }
+        template<class T, int M, int N> void set(uint8_t * buffer, size_t element, const mat<T, M, N> & value) const { for (int i = 0; i<N; ++i) for (int j = 0; j<M; ++j) set(buffer, uint3(j, i, element), value(i, j)); }
+        template<class T, int M> void set(uint8_t * buffer, size_t element, const vec<T, M> & value) const { for (int j = 0; j<M; ++j) set(buffer, uint3(j, 0, element), value[j]); }
+        template<class T> void set(uint8_t * buffer, size_t element, const T & value) const { set(buffer, uint3(0, 0, element), value); }
+    }; // x = row, y = column, z = array element
+    struct BlockDesc { std::string name; GLuint binding, dataSize; std::vector<UniformDesc> uniforms;
+        template<class T> void set(uint8_t * buffer, const char * name, size_t element, const T & value) const { for (auto & un : uniforms) if (un.name == name) un.set(buffer, element, value); }
+        template<class T> void set(uint8_t * buffer, const char * name, const T & value) const { set(buffer, name, 0, value); }
+    };
+    struct ProgramDesc { std::vector<BlockDesc> blocks; std::vector<SamplerDesc> samplers; 
+        const BlockDesc * block(const char * name) const { for(auto & bl : blocks) if(bl.name == name) return &bl; return nullptr; }
+        const SamplerDesc * sampler(const char * name) const { for (auto & samp : samplers) if (samp.name == name) return &samp; return nullptr; }
+    };
 
     class GlProgram
     {
@@ -149,6 +189,8 @@ namespace cu
         ~GlProgram() { glDeleteProgram(obj); }
 
         const ProgramDesc & description() const { return desc; }
+        const BlockDesc * block(const char * name) const { return desc.block(name); }
+        const SamplerDesc * sampler(const char * name) const { return desc.sampler(name); }
         void use() const { glUseProgram(obj); } // Warning: This command affects global GL state
 
         template<class T> void uniform(const char * name, const T & val) const { SetUniform(glGetUniformLocation(obj, name), val); }

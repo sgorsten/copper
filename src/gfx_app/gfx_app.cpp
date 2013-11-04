@@ -127,7 +127,6 @@ int main(int argc, char * argv[])
                 layout(shared, binding = 4) uniform Lighting
                 {
                     vec3 ambient;
-                    layout(row_major) mat3x4 woot[3];
                 };
                 uniform mat4 u_lightMatrix;
                 uniform vec3 u_lightPos;
@@ -202,6 +201,17 @@ int main(int argc, char * argv[])
             if (un.size.z > 1) std::cout << '[' << un.size.z << ']';
             std::cout << " {stride=" << toJson(un.stride) << '}' << std::endl;
         }
+
+
+        auto lightBlock = litProg->block("Lighting");
+        std::vector<uint8_t> buffer(lightBlock->dataSize);
+        lightBlock->set(buffer.data(), "ambient", float3(1,1,1));
+
+        GlUniformBuffer ubo;
+        ubo.setData(buffer.data(), buffer.size(), GL_STATIC_DRAW);
+        ubo.bind(lightBlock->binding);
+
+
 
         float t=0;
         Pose camPose;
