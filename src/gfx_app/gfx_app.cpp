@@ -191,21 +191,21 @@ int main(int argc, char * argv[])
         }
 
         auto & block = litProg->description().blocks.front();
-        std::cout << "(0) " << block.name << " : byte[" << block.dataSize << "] {binding=" << block.binding << "}" << std::endl;
-        for (auto & un : block.uniforms)
+        std::cout << "(0) " << block.name << " : byte[" << block.pack.size << "] {binding=" << block.binding << "}" << std::endl;
+        for (auto & un : block.pack.fields)
         {
             const char * types[] = { "float", "double", "int", "uint", "bool" };
-            std::cout << "(0:" << un.offset << ") " << un.name << " : " << types[un.type];
-            if (un.size.x > 1) std::cout << un.size.x;
-            if (un.size.y > 1) std::cout << 'x' << un.size.y;
-            if (un.size.z > 1) std::cout << '[' << un.size.z << ']';
+            std::cout << "(0:" << un.offset << ") " << un.name << " : " << types[un.baseType];
+            if (un.dimensions.x > 1) std::cout << un.dimensions.x;
+            if (un.dimensions.y > 1) std::cout << 'x' << un.dimensions.y;
+            if (un.dimensions.z > 1) std::cout << '[' << un.dimensions.z << ']';
             std::cout << " {stride=" << toJson(un.stride) << '}' << std::endl;
         }
 
 
         auto lightBlock = litProg->block("Lighting");
-        std::vector<uint8_t> buffer(lightBlock->dataSize);
-        lightBlock->set(buffer.data(), "ambient", float3(1,1,1));
+        std::vector<uint8_t> buffer(lightBlock->pack.size);
+        lightBlock->set(buffer.data(), "ambient", float3(0.2,0.2,0.2));
 
         GlUniformBuffer ubo;
         ubo.setData(buffer.data(), buffer.size(), GL_STATIC_DRAW);

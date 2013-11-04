@@ -215,10 +215,10 @@ GlProgram::GlProgram(GlShader _vs, GlShader _fs) : GlProgram()
         std::string name(nameLength - 1, ' ');
         glGetActiveUniformBlockName(obj, i, nameLength, nullptr, &name[0]);
 
-        BlockDesc bl;
+        UniformBlockDesc bl;
         bl.name = name;
         bl.binding = binding;
-        bl.dataSize = dataSize;
+        bl.pack.size = dataSize;
         desc.blocks.push_back(bl);
     }
 
@@ -235,24 +235,24 @@ GlProgram::GlProgram(GlShader _vs, GlShader _fs) : GlProgram()
         std::string name(nameLength-1,' ');
         glGetActiveUniformName(obj, i, nameLength, nullptr, &name[0]);
 
-        struct Layout { GLenum glType; UniformDesc::Type type; int rows, cols; };
-        static const Layout layouts[] = {                        { GL_FLOAT,             UniformDesc::Float,  1, 1 }, { GL_DOUBLE,            UniformDesc::Double, 1, 1 }, 
-            { GL_INT,               UniformDesc::Int,    1, 1 }, { GL_UNSIGNED_INT,      UniformDesc::UInt,   1, 1 }, { GL_BOOL,              UniformDesc::Bool,   1, 1 },
+        struct Layout { GLenum glType; PackedType type; int rows, cols; };
+        static const Layout layouts[] = {               { GL_FLOAT,             PackFloat,  1, 1 }, { GL_DOUBLE,            PackDouble, 1, 1 }, 
+            { GL_INT,               PackInt,    1, 1 }, { GL_UNSIGNED_INT,      PackUInt,   1, 1 }, { GL_BOOL,              PackBool,   1, 1 },
 
             // Vector uniforms: By convention we will treat these as column vectors, or matrices with M rows and 1 column
-            { GL_FLOAT_VEC2,        UniformDesc::Float,  2, 1 }, { GL_FLOAT_VEC3,        UniformDesc::Float,  3, 1 }, { GL_FLOAT_VEC4,        UniformDesc::Float,  4, 1 },
-            { GL_DOUBLE_VEC2,       UniformDesc::Double, 2, 1 }, { GL_DOUBLE_VEC3,       UniformDesc::Double, 3, 1 }, { GL_DOUBLE_VEC4,       UniformDesc::Double, 4, 1 },
-            { GL_INT_VEC2,          UniformDesc::Int,    2, 1 }, { GL_INT_VEC3,          UniformDesc::Int,    3, 1 }, { GL_INT_VEC4,          UniformDesc::Int,    4, 1 },
-            { GL_UNSIGNED_INT_VEC2, UniformDesc::UInt,   2, 1 }, { GL_UNSIGNED_INT_VEC3, UniformDesc::UInt,   3, 1 }, { GL_UNSIGNED_INT_VEC4, UniformDesc::UInt,   4, 1 },
-            { GL_BOOL_VEC2,         UniformDesc::Bool,   2, 1 }, { GL_BOOL_VEC3,         UniformDesc::Bool,   3, 1 }, { GL_BOOL_VEC4,         UniformDesc::Bool,   4, 1 },
+            { GL_FLOAT_VEC2,        PackFloat,  2, 1 }, { GL_FLOAT_VEC3,        PackFloat,  3, 1 }, { GL_FLOAT_VEC4,        PackFloat,  4, 1 },
+            { GL_DOUBLE_VEC2,       PackDouble, 2, 1 }, { GL_DOUBLE_VEC3,       PackDouble, 3, 1 }, { GL_DOUBLE_VEC4,       PackDouble, 4, 1 },
+            { GL_INT_VEC2,          PackInt,    2, 1 }, { GL_INT_VEC3,          PackInt,    3, 1 }, { GL_INT_VEC4,          PackInt,    4, 1 },
+            { GL_UNSIGNED_INT_VEC2, PackUInt,   2, 1 }, { GL_UNSIGNED_INT_VEC3, PackUInt,   3, 1 }, { GL_UNSIGNED_INT_VEC4, PackUInt,   4, 1 },
+            { GL_BOOL_VEC2,         PackBool,   2, 1 }, { GL_BOOL_VEC3,         PackBool,   3, 1 }, { GL_BOOL_VEC4,         PackBool,   4, 1 },
 
             // Matrix uniforms: By convention we record matrices as M x N, with M rows and N columns. Note: GLSL's convention is N x M
-            { GL_FLOAT_MAT2,        UniformDesc::Float,  2, 2 }, { GL_FLOAT_MAT2x3,      UniformDesc::Float,  3, 2 }, { GL_FLOAT_MAT2x4,      UniformDesc::Float,  4, 2 },
-            { GL_FLOAT_MAT3x2,      UniformDesc::Float,  2, 3 }, { GL_FLOAT_MAT3,        UniformDesc::Float,  3, 3 }, { GL_FLOAT_MAT3x4,      UniformDesc::Float,  4, 3 },
-            { GL_FLOAT_MAT4x2,      UniformDesc::Float,  2, 4 }, { GL_FLOAT_MAT4x3,      UniformDesc::Float,  3, 4 }, { GL_FLOAT_MAT4,        UniformDesc::Float,  4, 4 },
-            { GL_DOUBLE_MAT2,       UniformDesc::Double, 2, 2 }, { GL_DOUBLE_MAT2x3,     UniformDesc::Double, 3, 2 }, { GL_DOUBLE_MAT2x4,     UniformDesc::Double, 4, 2 },
-            { GL_DOUBLE_MAT3x2,     UniformDesc::Double, 2, 3 }, { GL_DOUBLE_MAT3,       UniformDesc::Double, 3, 3 }, { GL_DOUBLE_MAT3x4,     UniformDesc::Double, 4, 3 },
-            { GL_DOUBLE_MAT4x2,     UniformDesc::Double, 2, 4 }, { GL_DOUBLE_MAT4x3,     UniformDesc::Double, 3, 4 }, { GL_DOUBLE_MAT4,       UniformDesc::Double, 4, 4 }
+            { GL_FLOAT_MAT2,        PackFloat,  2, 2 }, { GL_FLOAT_MAT2x3,      PackFloat,  3, 2 }, { GL_FLOAT_MAT2x4,      PackFloat,  4, 2 },
+            { GL_FLOAT_MAT3x2,      PackFloat,  2, 3 }, { GL_FLOAT_MAT3,        PackFloat,  3, 3 }, { GL_FLOAT_MAT3x4,      PackFloat,  4, 3 },
+            { GL_FLOAT_MAT4x2,      PackFloat,  2, 4 }, { GL_FLOAT_MAT4x3,      PackFloat,  3, 4 }, { GL_FLOAT_MAT4,        PackFloat,  4, 4 },
+            { GL_DOUBLE_MAT2,       PackDouble, 2, 2 }, { GL_DOUBLE_MAT2x3,     PackDouble, 3, 2 }, { GL_DOUBLE_MAT2x4,     PackDouble, 4, 2 },
+            { GL_DOUBLE_MAT3x2,     PackDouble, 2, 3 }, { GL_DOUBLE_MAT3,       PackDouble, 3, 3 }, { GL_DOUBLE_MAT3x4,     PackDouble, 4, 3 },
+            { GL_DOUBLE_MAT4x2,     PackDouble, 2, 4 }, { GL_DOUBLE_MAT4x3,     PackDouble, 3, 4 }, { GL_DOUBLE_MAT4,       PackDouble, 4, 4 }
         };
         auto layout = std::find_if(std::begin(layouts), std::end(layouts), [type](const Layout & l) { return l.glType == type; });
 
@@ -275,8 +275,8 @@ GlProgram::GlProgram(GlShader _vs, GlShader _fs) : GlProgram()
         glGetActiveUniformsiv(obj, 1, &i, GL_UNIFORM_MATRIX_STRIDE, &matrixStride);
         glGetActiveUniformsiv(obj, 1, &i, GL_UNIFORM_IS_ROW_MAJOR, &isRowMajor);
 
-        UniformDesc un = { move(name), offset, layout->type, uint3(layout->rows, layout->cols, size), uint3(layout->type == UniformDesc::Double ? 8 : 4, matrixStride > 0 ? matrixStride : 0, arrayStride > 0 ? arrayStride : 0) };
-        if (isRowMajor) std::swap(un.stride.x, un.stride.y);
-        desc.blocks[blockIndex].uniforms.push_back(un);
+        PackedField f = { move(name), offset, layout->type, uint3(layout->rows, layout->cols, size), uint3(layout->type == PackDouble ? 8 : 4, matrixStride > 0 ? matrixStride : 0, arrayStride > 0 ? arrayStride : 0) };
+        if (isRowMajor) std::swap(f.stride.x, f.stride.y);
+        desc.blocks[blockIndex].pack.fields.push_back(f);
     }
 }

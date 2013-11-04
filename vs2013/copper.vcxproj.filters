@@ -10,6 +10,7 @@
     <ClInclude Include="..\include\cu\mesh.h" />
     <ClInclude Include="..\include\cu\plat.h" />
     <ClInclude Include="..\include\cu\load.h" />
+    <ClInclude Include="..\include\cu\pack.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\copper\json.cpp" />
@@ -17,5 +18,6 @@
     <ClCompile Include="..\src\copper\common.cpp" />
     <ClCompile Include="..\src\copper\plat.cpp" />
     <ClCompile Include="..\src\copper\load.cpp" />
+    <ClCompile Include="..\src\copper\pack.cpp" />
   </ItemGroup>
 </Project>
