@@ -207,6 +207,8 @@ int main(int argc, char * argv[])
         std::vector<uint8_t> buffer(lightBlock->pack.size);
         lightBlock->set(buffer.data(), "ambient", float3(0.2,0.2,0.2));
 
+        std::cout << lightBlock->pack.readJson(buffer.data()) << std::endl;
+
         GlUniformBuffer ubo;
         ubo.setData(buffer.data(), buffer.size(), GL_STATIC_DRAW);
         ubo.bind(lightBlock->binding);

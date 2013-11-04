@@ -12,6 +12,8 @@ namespace cu
     enum PackedType { PackFloat, PackDouble, PackInt, PackUInt, PackBool };
     void write(void * dest, PackedType type, double value);
   
+    JsonValue jsonFromPacked(const void * data, PackedType type);
+
     struct PackedField 
     {
         std::string     name;       // Name of field, for conversion purposes
@@ -20,11 +22,12 @@ namespace cu
         uint3           dimensions; // Number of rows (x), columns (y), and array elements (z)
         uint3           stride;     // Offset in bytes between rows (x), columns (y), and array elements (z)
 
+        JsonValue       readJson(const void * structBuffer) const;
         void            writeOne(void * structBuffer, uint3 index, double value) const;
 
-        template<class T>               void writeValue(void * structBuffer, size_t index, const T          & value) const {                                                 writeOne(structBuffer, uint3(0, 0, index), static_cast<double>(value     )); }
-        template<class T, int M>        void writeValue(void * structBuffer, size_t index, const vec<T,M>   & value) const {                         for (int j=0; j<M; ++j) writeOne(structBuffer, uint3(j, 0, index), static_cast<double>(value[j]  )); }
-        template<class T, int M, int N> void writeValue(void * structBuffer, size_t index, const mat<T,M,N> & value) const { for (int i=0; i<N; ++i) for (int j=0; j<M; ++j) writeOne(structBuffer, uint3(j, i, index), static_cast<double>(value(i,j))); }
+        template<class T>               void    writeValue(void * structBuffer, size_t index, const T          & value) const {                                                 writeOne(structBuffer, uint3(0, 0, index), static_cast<double>(value     )); }
+        template<class T, int M>        void    writeValue(void * structBuffer, size_t index, const vec<T,M>   & value) const {                         for (int j=0; j<M; ++j) writeOne(structBuffer, uint3(j, 0, index), static_cast<double>(value[j]  )); }
+        template<class T, int M, int N> void    writeValue(void * structBuffer, size_t index, const mat<T,M,N> & value) const { for (int i=0; i<N; ++i) for (int j=0; j<M; ++j) writeOne(structBuffer, uint3(j, i, index), static_cast<double>(value(i,j))); }
     };
 
     struct PackedStruct
@@ -32,6 +35,7 @@ namespace cu
         std::vector<PackedField>    fields;     // Fields of structure
         size_t                      size;       // Size of structure in bytes
 
+        JsonValue                   readJson(const void * buffer) const;
         template<class T> void      write(void * buffer, const char * field, size_t index, const T & value) const { for(auto & f : fields) if(f.name == field) f.writeValue(buffer, index, value); }
     };
 }
