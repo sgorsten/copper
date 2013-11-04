@@ -9,7 +9,7 @@ using namespace cu;
 
 struct Material
 {
-    std::shared_ptr<GlProgram> prog, shadowProg;
+    std::shared_ptr<const GlProgram> prog, shadowProg;
     std::shared_ptr<const GlTexture> texAlbedo, texNormal;
     std::shared_ptr<const GlSampler> samp;
 };
@@ -29,10 +29,14 @@ class Renderer
     GlProgram blockReference;
     const UniformBlockDesc * transformBlock, * lightingBlock;
     GlUniformBuffer transformUbo, lightingUbo;
+    GlFramebuffer shadowBuffer;
+    GlSampler shadowSampler;
 public:
     Renderer();
 
-    void renderScene(const std::vector<Object> & objs, const Pose & camPose, float aspect, const GlTexture * depthTex, const GlSampler & sampShadow, bool renderDepth);
+    void renderScene(const std::vector<Object> & objs, const Pose & camPose, float aspect, bool renderDepth);
+
+    void render(GlFramebuffer & screen, const std::vector<Object> & objs, const Pose & camPose);
 };
 
 #endif

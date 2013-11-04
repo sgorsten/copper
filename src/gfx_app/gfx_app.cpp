@@ -120,7 +120,6 @@ int main(int argc, char * argv[])
 
         auto sampNearest = shared(GlSampler(GL_NEAREST, GL_NEAREST, GL_REPEAT, false));
         auto sampLinear = shared(GlSampler(GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR, GL_REPEAT, false));
-        auto sampShadow = shared(GlSampler(GL_LINEAR, GL_LINEAR, GL_CLAMP, true));
 
         const ubyte4 checkerboardPixels[] = { { 32, 32, 32, 255 }, { 255, 255, 255, 255 }, { 255, 255, 255, 255 }, { 32, 32, 32, 255 } }, flatNormal = { 127, 127, 255, 255 };
         Material matCheckerboard = { litProg, geoOnlyProg, shared(GlTexture(GL_RGBA, { 2, 2 }, 1, checkerboardPixels)), shared(GlTexture(GL_RGBA, { 1, 1 }, 1, &flatNormal)), sampNearest };
@@ -142,32 +141,6 @@ int main(int argc, char * argv[])
         };
 
         auto fbScreen = GlFramebuffer(uint2(640,480));
-        auto fbShadow = GlFramebuffer::shadowBuffer(uint2(256,256));
-
-        // Report on uniforms
-        for (auto & samp : litProg->description().samplers)
-        {
-            std::cout << "sampler " << samp.name << " {binding=" << samp.binding << "}" << std::endl;
-        }
-
-        auto & block = litProg->description().blocks.front();
-        std::cout << "(0) " << block.name << " : byte[" << block.pack.size << "] {binding=" << block.binding << "}" << std::endl;
-        for (auto & un : block.pack.fields)
-        {
-            const char * types[] = { "float", "double", "int", "uint", "bool" };
-            std::cout << "(0:" << un.offset << ") " << un.name << " : " << types[un.baseType];
-            if (un.dimensions.x > 1) std::cout << un.dimensions.x;
-            if (un.dimensions.y > 1) std::cout << 'x' << un.dimensions.y;
-            if (un.dimensions.z > 1) std::cout << '[' << un.dimensions.z << ']';
-            std::cout << " {stride=" << toJson(un.stride) << '}' << std::endl;
-        }
-
-        auto transBlock = litProg->block("Transform");
-        auto lightBlock = litProg->block("Lighting");
-        GlUniformBuffer ubo(lightBlock->pack.size, GL_STREAM_DRAW);
-        GlUniformBuffer ubo2(transBlock->pack.size, GL_DYNAMIC_DRAW);
-        ubo.bind(lightBlock->binding);
-        ubo2.bind(transBlock->binding);
 
         float t=0;
         Pose camPose;
@@ -232,14 +205,7 @@ int main(int argc, char * argv[])
                 objs[4].pose.orientation = qrotation(float3(0, 0, 1), t);
             }
 
-            fbShadow.bind();
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            renderer.renderScene(objs, objs[1].pose, 1.0f, 0, *sampShadow, true);
-
-            fbScreen.bind();
-            glClearColor(0.2f, 0.6f, 1, 1);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            renderer.renderScene(objs, camPose, 1.333f, &fbShadow.texture(0), *sampShadow, false);
+            renderer.render(fbScreen, objs, camPose);
 
             window.SwapBuffers();
         }

@@ -51,9 +51,24 @@ Renderer::Renderer()
     lightingBlock = blockReference.block("Lighting");   
     lightingUbo = GlUniformBuffer(lightingBlock->pack.size, GL_STREAM_DRAW);
     lightingUbo.bind(lightingBlock->binding);
+
+    shadowBuffer = GlFramebuffer::shadowBuffer(uint2(512,512));
+    shadowSampler = GlSampler(GL_LINEAR, GL_LINEAR, GL_CLAMP, true);
 }    
 
-void Renderer::renderScene(const std::vector<Object> & objs, const Pose & camPose, float aspect, const GlTexture * depthTex, const GlSampler & sampShadow, bool renderDepth)
+void Renderer::render(GlFramebuffer & screen, const std::vector<Object> & objs, const Pose & camPose)
+{
+    shadowBuffer.bind();
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    renderScene(objs, objs[1].pose, 1.0f, true);
+
+    screen.bind();
+    glClearColor(0.2f, 0.6f, 1, 1);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    renderScene(objs, camPose, (float)screen.dimensions().x/screen.dimensions().y, false);
+}
+
+void Renderer::renderScene(const std::vector<Object> & objs, const Pose & camPose, float aspect, bool renderDepth)
 {
     auto lightPose = objs[1].pose;
 
@@ -86,18 +101,18 @@ void Renderer::renderScene(const std::vector<Object> & objs, const Pose & camPos
     {
         auto viewFromModel = mul(viewFromWorld, obj.pose.matrix());
 
-        const auto & prog = depthTex ? *obj.mat.prog : *obj.mat.shadowProg;
+        const auto & prog = renderDepth ? *obj.mat.shadowProg : *obj.mat.prog;
 
         transformBlock->set(tbuffer, "matClipFromModel", mul(clipFromView, viewFromModel));
         transformBlock->set(tbuffer, "matViewFromModel", viewFromModel);
         transformUbo.setData(tbuffer, GL_DYNAMIC_DRAW);
 
         prog.use();
-        if (depthTex)
+        if (!renderDepth)
         {
             if (obj.mat.texAlbedo) obj.mat.texAlbedo->bind(0, *obj.mat.samp);
             if (obj.mat.texNormal) obj.mat.texNormal->bind(1, *obj.mat.samp);
-            depthTex->bind(8, sampShadow);
+            shadowBuffer.texture(0).bind(8, shadowSampler);
         }
 
         obj.mesh->draw();
