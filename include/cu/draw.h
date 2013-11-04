@@ -135,8 +135,6 @@ namespace cu
         GlShader & operator = (GlShader && r) { std::swap(obj, r.obj); return *this; }
     };
 
-    inline void SetUniform(GLint loc, const float4x4 & val) { glUniformMatrix4fv(loc, 1, GL_FALSE, &val.x.x); }     // Warning: These commands affect global GL state
-
     struct SamplerDesc { std::string name; GLuint binding; };
     struct UniformBlockDesc { std::string name; GLuint binding; PackedStruct pack;
         template<class T> void set(uint8_t * buffer, const char * name, size_t element, const T & value) const { pack.write(buffer, name, 0, value); }
@@ -166,7 +164,6 @@ namespace cu
         const SamplerDesc * sampler(const char * name) const { return desc.sampler(name); }
         void use() const { glUseProgram(obj); } // Warning: This command affects global GL state
 
-        template<class T> void uniform(const char * name, const T & val) const { SetUniform(glGetUniformLocation(obj, name), val); }
         GlProgram & operator = (GlProgram && r) { std::swap(obj, r.obj); vs=std::move(r.vs); fs=std::move(r.fs); desc=r.desc; return *this; }
     };
 }

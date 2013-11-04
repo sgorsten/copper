@@ -56,7 +56,8 @@ struct Object
     Pose pose;
 };
 
-void renderScene(const std::vector<Object> & objs, const Pose & camPose, float aspect, const GlTexture * depthTex, const GlSampler & sampShadow, bool renderDepth, const UniformBlockDesc & block, GlUniformBuffer & ubo);
+void renderScene(const std::vector<Object> & objs, const Pose & camPose, float aspect, const GlTexture * depthTex, const GlSampler & sampShadow, bool renderDepth, const UniformBlockDesc & block, GlUniformBuffer & ubo, 
+    const UniformBlockDesc & tblock, GlUniformBuffer & tubo);
 
 int main(int argc, char * argv[])
 {
@@ -68,13 +69,17 @@ int main(int argc, char * argv[])
         auto unlitProg = shared(GlProgram(
             {GL_VERTEX_SHADER, R"(
                 #version 330
-                uniform mat4 u_matClipFromModel;
+                layout(shared, binding = 0) uniform Transform
+                {
+                    mat4 matClipFromModel;
+                    mat4 matViewFromModel;
+                };
                 layout(location = 0) in vec3 v_position;
                 layout(location = 1) in vec4 v_color;
                 out vec4 color;
                 void main()
                 {
-                    gl_Position = u_matClipFromModel * vec4(v_position,1);
+                    gl_Position = matClipFromModel * vec4(v_position,1);
                     color       = v_color;
                 }
             )"},
@@ -91,14 +96,26 @@ int main(int argc, char * argv[])
 
         // Program which renders only geometry for static meshes, useful for shadow mapping
         auto geoOnlyProg = shared(GlProgram(
-            { GL_VERTEX_SHADER,   "#version 330\n uniform mat4 u_matClipFromModel;\n layout(location = 0) in vec3 v_position;\n void main() { gl_Position = u_matClipFromModel * vec4(v_position,1); }"},
+            { GL_VERTEX_SHADER,   R"(
+                #version 330
+                layout(shared, binding = 0) uniform Transform
+                {
+                    mat4 matClipFromModel;
+                    mat4 matViewFromModel;
+                };
+                layout(location = 0) in vec3 v_position;
+                void main() { gl_Position = matClipFromModel * vec4(v_position,1); }
+            )"},
             { GL_FRAGMENT_SHADER, "#version 330\n void main() {}" }));
 
         auto litProg = shared(GlProgram(
             {GL_VERTEX_SHADER, R"(
                 #version 330
-                uniform mat4 u_matClipFromModel;
-                uniform mat4 u_matViewFromModel;
+                layout(shared, binding = 0) uniform Transform
+                {
+                    mat4 matClipFromModel;
+                    mat4 matViewFromModel;
+                };
                 layout(location = 0) in vec3 v_position;
                 layout(location = 1) in vec3 v_normal;
                 layout(location = 2) in vec3 v_tangent;
@@ -111,11 +128,11 @@ int main(int argc, char * argv[])
                 out vec2 texCoord;
                 void main()
                 {
-                    gl_Position = u_matClipFromModel * vec4(v_position,1);
-                    position    = (u_matViewFromModel * vec4(v_position,1)).xyz; // Assume transform outputs w=1
-                    normal      = (u_matViewFromModel * vec4(v_normal,0)).xyz;
-                    tangent     = (u_matViewFromModel * vec4(v_tangent,0)).xyz;
-                    bitangent   = (u_matViewFromModel * vec4(v_bitangent,0)).xyz;
+                    gl_Position = matClipFromModel * vec4(v_position,1);
+                    position    = (matViewFromModel * vec4(v_position,1)).xyz; // Assume transform outputs w=1
+                    normal      = (matViewFromModel * vec4(v_normal,0)).xyz;
+                    tangent     = (matViewFromModel * vec4(v_tangent,0)).xyz;
+                    bitangent   = (matViewFromModel * vec4(v_bitangent,0)).xyz;
                     texCoord    = v_texCoord;
                 }
             )"},
@@ -130,7 +147,6 @@ int main(int argc, char * argv[])
                     vec3 lightPos;
                     mat4 lightMatrix;
                 };
-                uniform vec3 u_lightPos;
                 in vec3 position;
                 in vec3 normal;
                 in vec3 tangent;
@@ -203,8 +219,9 @@ int main(int argc, char * argv[])
             std::cout << " {stride=" << toJson(un.stride) << '}' << std::endl;
         }
 
+        auto transBlock = litProg->block("Transform");
         auto lightBlock = litProg->block("Lighting");
-        GlUniformBuffer ubo;
+        GlUniformBuffer ubo,ubo2;
 
         float t=0;
         Pose camPose;
@@ -269,12 +286,12 @@ int main(int argc, char * argv[])
 
             fbShadow.bind();
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            renderScene(objs, objs[1].pose, 1.0f, 0, *sampShadow, true, *lightBlock, ubo);
+            renderScene(objs, objs[1].pose, 1.0f, 0, *sampShadow, true, *lightBlock, ubo, *transBlock, ubo2);
 
             fbScreen.bind();
             glClearColor(0.2f, 0.6f, 1, 1);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            renderScene(objs, camPose, 1.333f, &fbShadow.texture(0), *sampShadow, false, *lightBlock, ubo);
+            renderScene(objs, camPose, 1.333f, &fbShadow.texture(0), *sampShadow, false, *lightBlock, ubo, *transBlock, ubo2);
 
             window.SwapBuffers();
         }
@@ -287,7 +304,8 @@ int main(int argc, char * argv[])
     }
 }
 
-void renderScene(const std::vector<Object> & objs, const Pose & camPose, float aspect, const GlTexture * depthTex, const GlSampler & sampShadow, bool renderDepth, const UniformBlockDesc & block, GlUniformBuffer & ubo)
+void renderScene(const std::vector<Object> & objs, const Pose & camPose, float aspect, const GlTexture * depthTex, const GlSampler & sampShadow, bool renderDepth, const UniformBlockDesc & block, GlUniformBuffer & ubo,
+    const UniformBlockDesc & tblock, GlUniformBuffer & tubo)
 {
     auto lightPose = objs[1].pose;
 
@@ -310,6 +328,8 @@ void renderScene(const std::vector<Object> & objs, const Pose & camPose, float a
     ubo.setData(buffer.data(), buffer.size(), GL_STREAM_DRAW);
     ubo.bind(block.binding);
 
+    std::vector<uint8_t> tbuffer(tblock.pack.size);
+
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     if(!renderDepth) glCullFace(GL_BACK);
@@ -321,12 +341,14 @@ void renderScene(const std::vector<Object> & objs, const Pose & camPose, float a
 
         const auto & prog = depthTex ? *obj.mat.prog : *obj.mat.shadowProg;
 
-        prog.use();
-        prog.uniform("u_matClipFromModel", mul(clipFromView, viewFromModel));
+        tblock.set(tbuffer.data(), "matClipFromModel", mul(clipFromView, viewFromModel));
+        tblock.set(tbuffer.data(), "matViewFromModel", viewFromModel);
+        tubo.setData(tbuffer.data(), tbuffer.size(), GL_DYNAMIC_DRAW);
+        tubo.bind(tblock.binding);
 
+        prog.use();
         if (depthTex)
         {
-            prog.uniform("u_matViewFromModel", viewFromModel);
             if (obj.mat.texAlbedo) obj.mat.texAlbedo->bind(0, *obj.mat.samp);
             if (obj.mat.texNormal) obj.mat.texNormal->bind(1, *obj.mat.samp);
             depthTex->bind(8, sampShadow);

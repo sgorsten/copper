@@ -22,13 +22,13 @@ int main(int argc, char * argv[])
         GlProgram prog = {
             { GL_VERTEX_SHADER, R"(
                 #version 330
-                uniform mat4 u_transform;
+                uniform Transform { mat4 transform; };
                 layout(location = 0) in vec4 v_position;
                 layout(location = 1) in vec4 v_color;
                 out vec4 color;
                 void main()
                 {
-                    gl_Position = u_transform * v_position;
+                    gl_Position = transform * v_position;
                     color       = v_color;
                 }
             )" },
@@ -42,6 +42,10 @@ int main(int argc, char * argv[])
                 }
             )" }
         };
+
+        auto block = prog.block("Transform");
+        std::vector<uint8_t> buffer(block->pack.size);
+        GlUniformBuffer ubo;
 
         // Load a triangle mesh from a JSON-based format
         auto triMesh = decodeJson<TriMesh<ColorVertex, uint16_t>>(R"(
@@ -77,9 +81,12 @@ int main(int argc, char * argv[])
 
             Pose pose = qrotation(float3(0, 0, 1), SDL_GetTicks()*0.003f);
 
+            block->set(buffer.data(), "transform", pose.matrix());
+            ubo.setData(buffer.data(), buffer.size(), GL_DYNAMIC_DRAW);
+            ubo.bind(block->binding);
+
             glClear(GL_COLOR_BUFFER_BIT);
             prog.use();
-            prog.uniform("u_transform", pose.matrix());
             mesh.draw();
             window.SwapBuffers();
         }
