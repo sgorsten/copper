@@ -20,7 +20,7 @@ int main(int argc, char * argv[])
 
         // Load a simple shader that interpolates vertex colors
         GlProgram prog = {
-            { GL_VERTEX_SHADER, R"(
+            { GL_VERTEX_SHADER, {R"(
                 #version 330
                 uniform Transform { mat4 transform; };
                 layout(location = 0) in vec4 v_position;
@@ -31,8 +31,8 @@ int main(int argc, char * argv[])
                     gl_Position = transform * v_position;
                     color       = v_color;
                 }
-            )" },
-            { GL_FRAGMENT_SHADER, R"(
+            )"}},
+            { GL_FRAGMENT_SHADER, {R"(
                 #version 330
                 in vec4 color;
                 layout(location = 0) out vec4 f_color;
@@ -40,12 +40,13 @@ int main(int argc, char * argv[])
                 {
                     f_color = color;
                 }
-            )" }
+            )"}}
         };
 
         auto block = prog.block("Transform");
         std::vector<uint8_t> buffer(block->pack.size);
-        GlUniformBuffer ubo;
+        GlUniformBuffer ubo(block->pack.size, GL_DYNAMIC_DRAW);
+        ubo.bind(block->binding);
 
         // Load a triangle mesh from a JSON-based format
         auto triMesh = decodeJson<TriMesh<ColorVertex, uint16_t>>(R"(
@@ -81,9 +82,8 @@ int main(int argc, char * argv[])
 
             Pose pose = qrotation(float3(0, 0, 1), SDL_GetTicks()*0.003f);
 
-            block->set(buffer.data(), "transform", pose.matrix());
-            ubo.setData(buffer.data(), buffer.size(), GL_DYNAMIC_DRAW);
-            ubo.bind(block->binding);
+            block->set(buffer, "transform", pose.matrix());
+            ubo.setData(buffer, GL_DYNAMIC_DRAW);
 
             glClear(GL_COLOR_BUFFER_BIT);
             prog.use();

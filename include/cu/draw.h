@@ -18,12 +18,14 @@ namespace cu
         GlUniformBuffer & operator = (const GlUniformBuffer & r) = delete;
     public:
         GlUniformBuffer() : obj() {}
+        GlUniformBuffer(size_t size, GLenum usage) : GlUniformBuffer() { setData(nullptr, size, usage); }
         GlUniformBuffer(GlUniformBuffer && r) : obj(r.obj) { r.obj = 0; }
         ~GlUniformBuffer() { glDeleteBuffers(1, &obj); }
 
         void bind(GLuint index) const { glBindBufferBase(GL_UNIFORM_BUFFER, index, obj); } // Warning: This command affects global GL state
 
         void setData(const void * data, size_t size, GLenum usage);
+        void setData(const std::vector<uint8_t> & bytes, GLenum usage) { setData(bytes.data(), bytes.size(), usage); }
 
         GlUniformBuffer & operator = (GlUniformBuffer && r) { std::swap(obj, r.obj); return *this; }
     };
@@ -128,7 +130,7 @@ namespace cu
         GlShader & operator = (const GlShader & r) = delete;
     public:
         GlShader() : obj() {}
-        GlShader(GLenum type, const char * source);
+        GlShader(GLenum type, const std::vector<std::string> & sources);
         GlShader(GlShader && r) : obj(r.obj) { r.obj = 0; }
         ~GlShader() { glDeleteShader(obj); }
 
@@ -139,6 +141,8 @@ namespace cu
     struct UniformBlockDesc { std::string name; GLuint binding; PackedStruct pack;
         template<class T> void set(uint8_t * buffer, const char * name, size_t element, const T & value) const { pack.write(buffer, name, 0, value); }
         template<class T> void set(uint8_t * buffer, const char * name, const T & value) const { pack.write(buffer, name, 0, value); }
+        template<class T> void set(std::vector<uint8_t> & buffer, const char * name, size_t element, const T & value) const { pack.write(buffer.data(), name, 0, value); }
+        template<class T> void set(std::vector<uint8_t> & buffer, const char * name, const T & value) const { pack.write(buffer.data(), name, 0, value); }
     };
     struct ProgramDesc { std::vector<UniformBlockDesc> blocks; std::vector<SamplerDesc> samplers; 
         const UniformBlockDesc * block(const char * name) const { for(auto & bl : blocks) if(bl.name == name) return &bl; return nullptr; }

@@ -66,14 +66,44 @@ int main(int argc, char * argv[])
         Window window("Graphics App", {640,480});
         window.WriteGlVersion(std::cout);
 
+        auto vsPreamble = R"(
+            #version 330
+            layout(shared, binding = 0) uniform Transform
+            {
+                mat4 matClipFromModel;
+                mat4 matViewFromModel;
+            };
+        )";
+        auto fsPreamble = R"(   
+            #version 330
+            layout(shared, binding = 4) uniform Lighting
+            {
+                vec3 ambient;
+                vec3 lightPos;
+                mat4 lightMatrix;
+            };
+            layout(binding = 8) uniform sampler2DShadow	u_texShadow;
+
+            vec3 computeLighting(vec3 vsPosition, vec3 vsNormal)
+            {
+                vec3 eyeDir     = normalize(-vsPosition);
+                vec3 light      = ambient;
+
+                vec4 lsPos      = mul(lightMatrix,vec4(vsPosition,1));
+                vec3 lightColor = vec3(1,1,1) * shadow2DProj(u_texShadow, lsPos).r;
+
+                vec3 lightDir   = normalize(lightPos - vsPosition);
+                vec3 halfDir    = normalize(lightDir + eyeDir);
+
+                light += lightColor * 0.8 * max(dot(lightDir, vsNormal), 0);
+                light += lightColor * pow(max(dot(halfDir, vsNormal), 0), 256);
+
+                return light;
+            }
+        )";
+
         auto unlitProg = shared(GlProgram(
-            {GL_VERTEX_SHADER, R"(
-                #version 330
-                layout(shared, binding = 0) uniform Transform
-                {
-                    mat4 matClipFromModel;
-                    mat4 matViewFromModel;
-                };
+            {GL_VERTEX_SHADER, {vsPreamble, R"(
                 layout(location = 0) in vec3 v_position;
                 layout(location = 1) in vec4 v_color;
                 out vec4 color;
@@ -82,40 +112,24 @@ int main(int argc, char * argv[])
                     gl_Position = matClipFromModel * vec4(v_position,1);
                     color       = v_color;
                 }
-            )"},
-            {GL_FRAGMENT_SHADER, R"(
-                #version 330
+            )"}},
+            {GL_FRAGMENT_SHADER, {fsPreamble, R"(
                 in vec4 color;
                 layout(location = 0) out vec4 f_color;
                 void main()
                 {
                     f_color = color;
                 }
-            )"}
+            )"}}
         ));
 
         // Program which renders only geometry for static meshes, useful for shadow mapping
         auto geoOnlyProg = shared(GlProgram(
-            { GL_VERTEX_SHADER,   R"(
-                #version 330
-                layout(shared, binding = 0) uniform Transform
-                {
-                    mat4 matClipFromModel;
-                    mat4 matViewFromModel;
-                };
-                layout(location = 0) in vec3 v_position;
-                void main() { gl_Position = matClipFromModel * vec4(v_position,1); }
-            )"},
-            { GL_FRAGMENT_SHADER, "#version 330\n void main() {}" }));
+            { GL_VERTEX_SHADER, {vsPreamble, "layout(location = 0) in vec3 v_position;\nvoid main() { gl_Position = matClipFromModel * vec4(v_position,1); }"}},
+            { GL_FRAGMENT_SHADER, {fsPreamble, "void main() {}"}}));
 
         auto litProg = shared(GlProgram(
-            {GL_VERTEX_SHADER, R"(
-                #version 330
-                layout(shared, binding = 0) uniform Transform
-                {
-                    mat4 matClipFromModel;
-                    mat4 matViewFromModel;
-                };
+            {GL_VERTEX_SHADER, {vsPreamble, R"(
                 layout(location = 0) in vec3 v_position;
                 layout(location = 1) in vec3 v_normal;
                 layout(location = 2) in vec3 v_tangent;
@@ -135,44 +149,24 @@ int main(int argc, char * argv[])
                     bitangent   = (matViewFromModel * vec4(v_bitangent,0)).xyz;
                     texCoord    = v_texCoord;
                 }
-            )"},
-            {GL_FRAGMENT_SHADER, R"(
-                #version 330
+            )"}},
+            {GL_FRAGMENT_SHADER, {fsPreamble, R"(
                 layout(binding = 0) uniform sampler2D u_texAlbedo;
                 layout(binding = 1) uniform sampler2D u_texNormal;
-                layout(binding = 8) uniform sampler2DShadow	u_texShadow;
-                layout(shared, binding = 4) uniform Lighting
-                {
-                    vec3 ambient;
-                    vec3 lightPos;
-                    mat4 lightMatrix;
-                };
                 in vec3 position;
                 in vec3 normal;
                 in vec3 tangent;
                 in vec3 bitangent;
                 in vec2 texCoord;
-                layout(location = 0) out vec4 f_color;
+                layout(location = 0) out vec4 f_color;   
                 void main()
                 {
-                    vec4 lsPos = mul(lightMatrix,vec4(position,1));
-		            vec3 lightColor = vec3(1,1,1) * shadow2DProj(u_texShadow, lsPos).r;
-
                     vec3 tsNormal = texture(u_texNormal, texCoord).xyz*2 - 1;
                     vec3 vsNormal = normalize(normalize(tangent) * tsNormal.x + normalize(bitangent) * tsNormal.y + normalize(normal) * tsNormal.z);
-
-                    vec3 lightDir = normalize(lightPos - position);
-                    vec3 eyeDir   = normalize(-position);
-                    vec3 halfDir  = normalize(lightDir + eyeDir);
-
-                    vec3 light = ambient; //vec3(0.2,0.2,0.2);
-                    light += lightColor * 0.8 * max(dot(lightDir, vsNormal), 0);
-                    light += lightColor * pow(max(dot(halfDir, vsNormal), 0), 256);
-
                     vec4 albedo = texture(u_texAlbedo, texCoord);
-                    f_color = vec4(albedo.rgb * light, albedo.a);
+                    f_color = vec4(albedo.rgb * computeLighting(position, vsNormal), albedo.a);
                 }
-            )"}
+            )"}}
         ));
 
         auto sampNearest = shared(GlSampler(GL_NEAREST, GL_NEAREST, GL_REPEAT, false));
@@ -221,7 +215,10 @@ int main(int argc, char * argv[])
 
         auto transBlock = litProg->block("Transform");
         auto lightBlock = litProg->block("Lighting");
-        GlUniformBuffer ubo,ubo2;
+        GlUniformBuffer ubo(lightBlock->pack.size, GL_STREAM_DRAW);
+        GlUniformBuffer ubo2(transBlock->pack.size, GL_DYNAMIC_DRAW);
+        ubo.bind(lightBlock->binding);
+        ubo2.bind(transBlock->binding);
 
         float t=0;
         Pose camPose;
@@ -322,11 +319,10 @@ void renderScene(const std::vector<Object> & objs, const Pose & camPose, float a
 
     // Set up lighting UBO
     std::vector<uint8_t> buffer(block.pack.size);
-    block.set(buffer.data(), "ambient", float3(0.2, 0.2, 0.2));
-    block.set(buffer.data(), "lightPos", transformCoord(viewFromWorld, lightPose.position));
-    block.set(buffer.data(), "lightMatrix", shadowTexFromView);
-    ubo.setData(buffer.data(), buffer.size(), GL_STREAM_DRAW);
-    ubo.bind(block.binding);
+    block.set(buffer, "ambient", float3(0.2, 0.2, 0.2));
+    block.set(buffer, "lightPos", transformCoord(viewFromWorld, lightPose.position));
+    block.set(buffer, "lightMatrix", shadowTexFromView);
+    ubo.setData(buffer, GL_STREAM_DRAW);
 
     std::vector<uint8_t> tbuffer(tblock.pack.size);
 
@@ -341,10 +337,9 @@ void renderScene(const std::vector<Object> & objs, const Pose & camPose, float a
 
         const auto & prog = depthTex ? *obj.mat.prog : *obj.mat.shadowProg;
 
-        tblock.set(tbuffer.data(), "matClipFromModel", mul(clipFromView, viewFromModel));
-        tblock.set(tbuffer.data(), "matViewFromModel", viewFromModel);
-        tubo.setData(tbuffer.data(), tbuffer.size(), GL_DYNAMIC_DRAW);
-        tubo.bind(tblock.binding);
+        tblock.set(tbuffer, "matClipFromModel", mul(clipFromView, viewFromModel));
+        tblock.set(tbuffer, "matViewFromModel", viewFromModel);
+        tubo.setData(tbuffer, GL_DYNAMIC_DRAW);
 
         prog.use();
         if (depthTex)

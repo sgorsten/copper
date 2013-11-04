@@ -170,10 +170,13 @@ void GlMesh::draw() const
     else glDrawArrays(emode, 0, numVerts);
 }
 
-GlShader::GlShader(GLenum type, const char * source) : GlShader()
+GlShader::GlShader(GLenum type, const std::vector<std::string> & sources) : GlShader()
 {
+    std::vector<const char *> cstrs;
+    for (auto & s : sources) cstrs.push_back(s.c_str());
+
     obj = glCreateShader(type);
-    glShaderSource(obj, 1, &source, nullptr);
+    glShaderSource(obj, cstrs.size(), cstrs.data(), nullptr);
     glCompileShader(obj);
 
     GLint status; glGetShaderiv(obj, GL_COMPILE_STATUS, &status);
