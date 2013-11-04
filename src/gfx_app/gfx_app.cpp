@@ -128,7 +128,7 @@ int main(int argc, char * argv[])
 
         auto brickBox = shared(glMesh(normalBox({ 1.2f, 1.0f, 0.8f })));
         auto groundBox = shared(glMesh(normalBox(float3(8, 1, 8))));
-        auto lightBox = shared(glMesh(colorBox({ 0.2f, 0.2f, 0.2f }, { 255, 255, 127, 255 })));
+        auto lightBox = shared(glMesh(colorBox({ 0.2f, 0.2f, 0.2f }, { 255, 255, 192, 255 })));
 
         // Define scene
         std::vector<Object> objs = {
@@ -146,7 +146,7 @@ int main(int argc, char * argv[])
         View view = { 1.0f, 0.1f, 16.0f, Pose() };
 
         std::vector<Light> lights = {
-            { {1,1,0.5f}, {1.0f, 0.1f, 16.0f, objs[1].pose} }
+            { {1,1,0.75f}, {1.0f, 0.1f, 16.0f, objs[1].pose} }
         };
 
         Renderer renderer;
@@ -166,6 +166,7 @@ int main(int argc, char * argv[])
                     quit = true;
                     break;
                 case SDL_KEYDOWN:
+                    if (e.key.keysym.sym == SDLK_ESCAPE) quit = true;
                     if (e.key.keysym.sym == SDLK_SPACE) run = !run;
                 case SDL_KEYUP:
                     switch (e.key.keysym.sym)

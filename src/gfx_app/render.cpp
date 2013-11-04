@@ -1,7 +1,7 @@
 #include "render.h"
 
 const char * g_vertShaderPreamble = R"(
-    #version 330
+    #version 420
     layout(shared, binding = 0) uniform Transform
     {
         mat4 matClipFromModel;
@@ -10,7 +10,7 @@ const char * g_vertShaderPreamble = R"(
 )";
 
 const char * g_fragShaderPreamble = R"(
-    #version 330
+    #version 420
     layout(shared, binding = 4) uniform Lighting
     {
         vec3 ambient;
@@ -25,8 +25,8 @@ const char * g_fragShaderPreamble = R"(
         vec3 eyeDir     = normalize(-vsPosition);
         vec3 light      = ambient;
 
-        vec4 lsPos      = mul(lightMatrix,vec4(vsPosition,1));
-        vec3 lightAmt   = lightColor * shadow2DProj(u_texShadow, lsPos).r;
+        vec4 lsPos      = lightMatrix * vec4(vsPosition,1);
+        vec3 lightAmt   = lightColor * textureProj(u_texShadow, lsPos).r;
 
         vec3 lightDir   = normalize(lightPos - vsPosition);
         vec3 halfDir    = normalize(lightDir + eyeDir);

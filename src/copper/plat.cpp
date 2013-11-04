@@ -7,8 +7,8 @@ using namespace cu;
 Window::Window(const char * title, int2 dimensions) : Window()
 {
     if (SDL_Init(SDL_INIT_VIDEO) == -1) throw std::runtime_error("SDL_Init() failed");
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, dimensions.x, dimensions.y, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
     if (!window) throw std::runtime_error("SDL_CreateWindow() failed");
