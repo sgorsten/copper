@@ -143,7 +143,11 @@ int main(int argc, char * argv[])
         auto fbScreen = GlFramebuffer(uint2(640,480));
 
         float t=0;
-        Pose camPose;
+        View view = { 1.0f, 0.1f, 16.0f, Pose() };
+
+        std::vector<Light> lights = {
+            { {1,1,0.5f}, {1.0f, 0.1f, 16.0f, objs[1].pose} }
+        };
 
         Renderer renderer;
 
@@ -194,8 +198,8 @@ int main(int argc, char * argv[])
             if(a) move.x -= 1;
             if(s) move.z += 1;
             if(d) move.x += 1;
-            camPose.orientation = qmul(qrotation(float3(0,1,0), yaw), qrotation(float3(1,0,0), pitch));
-            camPose.position = camPose * (safenorm(move)*(timestep*10));
+            view.pose.orientation = qmul(qrotation(float3(0,1,0), yaw), qrotation(float3(1,0,0), pitch));
+            view.pose.position = view.pose * (safenorm(move)*(timestep * 10));
             
             if (run)
             {
@@ -205,7 +209,7 @@ int main(int argc, char * argv[])
                 objs[4].pose.orientation = qrotation(float3(0, 0, 1), t);
             }
 
-            renderer.render(fbScreen, objs, camPose);
+            renderer.render(fbScreen, view, objs, lights);
 
             window.SwapBuffers();
         }

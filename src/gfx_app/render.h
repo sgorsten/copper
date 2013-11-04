@@ -7,6 +7,18 @@
 
 using namespace cu;
 
+struct View
+{
+    float vfov, nearClip, farClip;
+    Pose pose;
+};
+
+struct Light
+{
+    float3 color;
+    View view;
+};
+
 struct Material
 {
     std::shared_ptr<const GlProgram> prog, shadowProg;
@@ -24,6 +36,7 @@ struct Object
 extern const char * g_vertShaderPreamble;
 extern const char * g_fragShaderPreamble;
 
+
 class Renderer
 {
     GlProgram blockReference;
@@ -31,12 +44,12 @@ class Renderer
     GlUniformBuffer transformUbo, lightingUbo;
     GlFramebuffer shadowBuffer;
     GlSampler shadowSampler;
+
+    void renderScene(GlFramebuffer & target, const View & view, const std::vector<Object> & objs, const std::vector<Light> & lights, bool renderDepth);
 public:
     Renderer();
 
-    void renderScene(const std::vector<Object> & objs, const Pose & camPose, float aspect, bool renderDepth);
-
-    void render(GlFramebuffer & screen, const std::vector<Object> & objs, const Pose & camPose);
+    void render(GlFramebuffer & screen, const View & view, const std::vector<Object> & objects, const std::vector<Light> & lights);
 };
 
 #endif
