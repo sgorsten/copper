@@ -26,8 +26,8 @@ namespace cu
         void            writeOne(void * structBuffer, uint3 index, double value) const;
 
         template<class T>               void    writeValue(void * structBuffer, size_t index, const T          & value) const {                                                 writeOne(structBuffer, uint3(0, 0, index), static_cast<double>(value     )); }
-        template<class T, int M>        void    writeValue(void * structBuffer, size_t index, const vec<T,M>   & value) const {                         for (int j=0; j<M; ++j) writeOne(structBuffer, uint3(j, 0, index), static_cast<double>(value[j]  )); }
-        template<class T, int M, int N> void    writeValue(void * structBuffer, size_t index, const mat<T,M,N> & value) const { for (int i=0; i<N; ++i) for (int j=0; j<M; ++j) writeOne(structBuffer, uint3(j, i, index), static_cast<double>(value(i,j))); }
+        template<class T, int M>        void    writeValue(void * structBuffer, size_t index, const vec<T,M>   & value) const {                         for (int i=0; i<M; ++i) writeOne(structBuffer, uint3(i, 0, index), static_cast<double>(value[i]  )); }
+        template<class T, int M, int N> void    writeValue(void * structBuffer, size_t index, const mat<T,M,N> & value) const { for (int j=0; j<N; ++j) for (int i=0; i<M; ++i) writeOne(structBuffer, uint3(i, j, index), static_cast<double>(value(i,j))); }
     };
 
     struct PackedStruct

@@ -135,13 +135,7 @@ namespace cu
         GlShader & operator = (GlShader && r) { std::swap(obj, r.obj); return *this; }
     };
 
-    // Warning: These commands affect global GL state
-    inline void SetUniform(GLint loc, int val) { glUniform1i(loc, val); }
-    inline void SetUniform(GLint loc, float val) { glUniform1f(loc, val); }
-    inline void SetUniform(GLint loc, const float2 & val) { glUniform2fv(loc, 1, &val.x); }
-    inline void SetUniform(GLint loc, const float3 & val) { glUniform3fv(loc, 1, &val.x); }
-    inline void SetUniform(GLint loc, const float4 & val) { glUniform4fv(loc, 1, &val.x); }
-    inline void SetUniform(GLint loc, const float4x4 & val) { glUniformMatrix4fv(loc, 1, GL_FALSE, &val.x.x); }
+    inline void SetUniform(GLint loc, const float4x4 & val) { glUniformMatrix4fv(loc, 1, GL_FALSE, &val.x.x); }     // Warning: These commands affect global GL state
 
     struct SamplerDesc { std::string name; GLuint binding; };
     struct UniformBlockDesc { std::string name; GLuint binding; PackedStruct pack;

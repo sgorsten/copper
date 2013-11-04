@@ -56,7 +56,7 @@ struct Object
     Pose pose;
 };
 
-void renderScene(const std::vector<Object> & objs, const Pose & camPose, float aspect, const GlTexture * depthTex, const GlSampler & sampShadow, bool renderDepth);
+void renderScene(const std::vector<Object> & objs, const Pose & camPose, float aspect, const GlTexture * depthTex, const GlSampler & sampShadow, bool renderDepth, const UniformBlockDesc & block, GlUniformBuffer & ubo);
 
 int main(int argc, char * argv[])
 {
@@ -127,8 +127,9 @@ int main(int argc, char * argv[])
                 layout(shared, binding = 4) uniform Lighting
                 {
                     vec3 ambient;
+                    vec3 lightPos;
+                    mat4 lightMatrix;
                 };
-                uniform mat4 u_lightMatrix;
                 uniform vec3 u_lightPos;
                 in vec3 position;
                 in vec3 normal;
@@ -138,13 +139,13 @@ int main(int argc, char * argv[])
                 layout(location = 0) out vec4 f_color;
                 void main()
                 {
-                    vec4 lsPos = mul(u_lightMatrix,vec4(position,1));
+                    vec4 lsPos = mul(lightMatrix,vec4(position,1));
 		            vec3 lightColor = vec3(1,1,1) * shadow2DProj(u_texShadow, lsPos).r;
 
                     vec3 tsNormal = texture(u_texNormal, texCoord).xyz*2 - 1;
                     vec3 vsNormal = normalize(normalize(tangent) * tsNormal.x + normalize(bitangent) * tsNormal.y + normalize(normal) * tsNormal.z);
 
-                    vec3 lightDir = normalize(u_lightPos - position);
+                    vec3 lightDir = normalize(lightPos - position);
                     vec3 eyeDir   = normalize(-position);
                     vec3 halfDir  = normalize(lightDir + eyeDir);
 
@@ -202,18 +203,8 @@ int main(int argc, char * argv[])
             std::cout << " {stride=" << toJson(un.stride) << '}' << std::endl;
         }
 
-
         auto lightBlock = litProg->block("Lighting");
-        std::vector<uint8_t> buffer(lightBlock->pack.size);
-        lightBlock->set(buffer.data(), "ambient", float3(0.2,0.2,0.2));
-
-        std::cout << lightBlock->pack.readJson(buffer.data()) << std::endl;
-
         GlUniformBuffer ubo;
-        ubo.setData(buffer.data(), buffer.size(), GL_STATIC_DRAW);
-        ubo.bind(lightBlock->binding);
-
-
 
         float t=0;
         Pose camPose;
@@ -278,12 +269,12 @@ int main(int argc, char * argv[])
 
             fbShadow.bind();
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            renderScene(objs, objs[1].pose, 1.0f, 0, *sampShadow, true);
+            renderScene(objs, objs[1].pose, 1.0f, 0, *sampShadow, true, *lightBlock, ubo);
 
             fbScreen.bind();
             glClearColor(0.2f, 0.6f, 1, 1);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-            renderScene(objs, camPose, 1.333f, &fbShadow.texture(0), *sampShadow, false);
+            renderScene(objs, camPose, 1.333f, &fbShadow.texture(0), *sampShadow, false, *lightBlock, ubo);
 
             window.SwapBuffers();
         }
@@ -296,11 +287,9 @@ int main(int argc, char * argv[])
     }
 }
 
-void renderScene(const std::vector<Object> & objs, const Pose & camPose, float aspect, const GlTexture * depthTex, const GlSampler & sampShadow, bool renderDepth)
+void renderScene(const std::vector<Object> & objs, const Pose & camPose, float aspect, const GlTexture * depthTex, const GlSampler & sampShadow, bool renderDepth, const UniformBlockDesc & block, GlUniformBuffer & ubo)
 {
     auto lightPose = objs[1].pose;
-
-
 
     auto clipFromView = perspectiveMatrixRhGl(1.0f, aspect, 0.1f, 16.0f);
     auto viewFromWorld = camPose.inverse().matrix();
@@ -312,6 +301,14 @@ void renderScene(const std::vector<Object> & objs, const Pose & camPose, float a
     auto shadowTexFromClip = float4x4{{0.5f, 0, 0, 0}, {0, 0.5f, 0, 0}, {0, 0, 0.5f, 0}, {0.5f, 0.5f, 0.5f, 1}};
     auto worldFromView = camPose.matrix();
     auto shadowTexFromView = mul(shadowTexFromClip, shadowClipFromView, shadowViewFromWorld, worldFromView);
+
+    // Set up lighting UBO
+    std::vector<uint8_t> buffer(block.pack.size);
+    block.set(buffer.data(), "ambient", float3(0.2, 0.2, 0.2));
+    block.set(buffer.data(), "lightPos", transformCoord(viewFromWorld, lightPose.position));
+    block.set(buffer.data(), "lightMatrix", shadowTexFromView);
+    ubo.setData(buffer.data(), buffer.size(), GL_STREAM_DRAW);
+    ubo.bind(block.binding);
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
@@ -330,9 +327,6 @@ void renderScene(const std::vector<Object> & objs, const Pose & camPose, float a
         if (depthTex)
         {
             prog.uniform("u_matViewFromModel", viewFromModel);
-            prog.uniform("u_lightPos", transformCoord(viewFromWorld, lightPose.position));
-            prog.uniform("u_lightMatrix", shadowTexFromView);
-
             if (obj.mat.texAlbedo) obj.mat.texAlbedo->bind(0, *obj.mat.samp);
             if (obj.mat.texNormal) obj.mat.texNormal->bind(1, *obj.mat.samp);
             depthTex->bind(8, sampShadow);
