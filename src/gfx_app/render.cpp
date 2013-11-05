@@ -102,8 +102,8 @@ void Renderer::renderScene(GlFramebuffer & target, const View & view, const std:
             auto shadowTexFromView = mul(shadowTexFromClip, shadowClipFromView, shadowViewFromWorld, worldFromView);
 
             // Set light values
-            lightingBlock->set(buffer, prefix + "color", lights[0].color);
-            lightingBlock->set(buffer, prefix + "position", transformCoord(viewFromWorld, lights[0].view.pose.position));
+            lightingBlock->set(buffer, prefix + "color", lights[i].color);
+            lightingBlock->set(buffer, prefix + "position", transformCoord(viewFromWorld, lights[i].view.pose.position));
             lightingBlock->set(buffer, prefix + "matrix", shadowTexFromView);
             shadowBuffer[i].texture(0).bind(8+i, shadowSampler);
         }
