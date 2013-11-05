@@ -128,12 +128,15 @@ int main(int argc, char * argv[])
 
         auto brickBox = shared(glMesh(normalBox({ 1.2f, 1.0f, 0.8f })));
         auto groundBox = shared(glMesh(normalBox(float3(8, 1, 8))));
-        auto lightBox = shared(glMesh(colorBox({ 0.2f, 0.2f, 0.2f }, { 255, 255, 192, 255 })));
+
+        auto lightBox0 = shared(glMesh(colorBox({ 0.2f, 0.2f, 0.2f }, { 255, 255, 192, 255 })));
+        auto lightBox1 = shared(glMesh(colorBox({ 0.2f, 0.2f, 0.2f }, { 255,  64,  64, 255 })));
 
         // Define scene
         std::vector<Object> objs = {
             { matCheckerboard, groundBox, float3(0, -2, -4) },
-            { matLight, lightBox, Pose(float3(0, 4, -10), qmul(qrotation(float3(1,0,0), 0.8f), qrotation(float3(0,1,0), 6.28f/2))) },
+            { matLight, lightBox0, Pose(float3(0, 4, -10), qmul(qrotation(float3(1, 0, 0), 0.8f), qrotation(float3(0, 1, 0), 6.28f / 2))) },
+            { matLight, lightBox1, Pose(float3(0, 4, 2), qrotation(float3(1, 0, 0), -0.8f)) },
             { matGreenwall, brickBox, float3(-2, 0, -2) },
             { matGreenwall, brickBox, float3(-2, 0, -6) },
             { matGreenwall, brickBox, float3(+2, 0, -2) },
@@ -146,7 +149,8 @@ int main(int argc, char * argv[])
         View view = { 1.0f, 0.1f, 16.0f, Pose() };
 
         std::vector<Light> lights = {
-            { {1,1,0.75f}, {1.0f, 0.1f, 16.0f, objs[1].pose} }
+            { {1,1.00f,0.75f}, {1.0f, 0.1f, 16.0f, objs[1].pose} },
+            { {1,0.25f,0.25f}, {1.0f, 0.1f, 16.0f, objs[2].pose} }
         };
 
         Renderer renderer;
@@ -205,9 +209,9 @@ int main(int argc, char * argv[])
             if (run)
             {
                 t += timestep * 2;
-                objs[2].pose.orientation = qrotation(float3(1, 0, 0), t);
-                objs[3].pose.orientation = qrotation(float3(0, 1, 0), t);
-                objs[4].pose.orientation = qrotation(float3(0, 0, 1), t);
+                objs[3].pose.orientation = qrotation(float3(1, 0, 0), t);
+                objs[4].pose.orientation = qrotation(float3(0, 1, 0), t);
+                objs[5].pose.orientation = qrotation(float3(0, 0, 1), t);
             }
 
             renderer.render(fbScreen, view, objs, lights);

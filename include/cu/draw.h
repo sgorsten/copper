@@ -139,10 +139,10 @@ namespace cu
 
     struct SamplerDesc { std::string name; GLuint binding; };
     struct UniformBlockDesc { std::string name; GLuint binding; PackedStruct pack;
-        template<class T> void set(uint8_t * buffer, const char * name, size_t element, const T & value) const { pack.write(buffer, name, 0, value); }
-        template<class T> void set(uint8_t * buffer, const char * name, const T & value) const { pack.write(buffer, name, 0, value); }
-        template<class T> void set(std::vector<uint8_t> & buffer, const char * name, size_t element, const T & value) const { pack.write(buffer.data(), name, 0, value); }
-        template<class T> void set(std::vector<uint8_t> & buffer, const char * name, const T & value) const { pack.write(buffer.data(), name, 0, value); }
+        template<class T> void set(uint8_t * buffer, const std::string & name, size_t element, const T & value) const { pack.write(buffer, name, 0, value); }
+        template<class T> void set(uint8_t * buffer, const std::string & name, const T & value) const { pack.write(buffer, name, 0, value); }
+        template<class T> void set(std::vector<uint8_t> & buffer, const std::string & name, size_t element, const T & value) const { pack.write(buffer.data(), name, 0, value); }
+        template<class T> void set(std::vector<uint8_t> & buffer, const std::string & name, const T & value) const { pack.write(buffer.data(), name, 0, value); }
     };
     struct ProgramDesc { std::vector<UniformBlockDesc> blocks; std::vector<SamplerDesc> samplers; 
         const UniformBlockDesc * block(const char * name) const { for(auto & bl : blocks) if(bl.name == name) return &bl; return nullptr; }

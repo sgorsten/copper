@@ -36,7 +36,7 @@ namespace cu
         size_t                      size;       // Size of structure in bytes
 
         JsonValue                   readJson(const void * buffer) const;
-        template<class T> void      write(void * buffer, const char * field, size_t index, const T & value) const { for(auto & f : fields) if(f.name == field) f.writeValue(buffer, index, value); }
+        template<class T> void      write(void * buffer, const std::string & field, size_t index, const T & value) const { for (auto & f : fields) if (f.name == field) f.writeValue(buffer, index, value); }
     };
 }
 

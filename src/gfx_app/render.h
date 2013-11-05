@@ -36,13 +36,12 @@ struct Object
 extern const char * g_vertShaderPreamble;
 extern const char * g_fragShaderPreamble;
 
-
 class Renderer
 {
     GlProgram blockReference;
     const UniformBlockDesc * transformBlock, * lightingBlock;
     GlUniformBuffer transformUbo, lightingUbo;
-    GlFramebuffer shadowBuffer;
+    GlFramebuffer shadowBuffer[2];
     GlSampler shadowSampler;
 
     void renderScene(GlFramebuffer & target, const View & view, const std::vector<Object> & objs, const std::vector<Light> & lights, bool renderDepth);

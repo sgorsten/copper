@@ -11,28 +11,35 @@ const char * g_vertShaderPreamble = R"(
 
 const char * g_fragShaderPreamble = R"(
     #version 420
+    struct ShadowLight
+    {
+        mat4 matrix;
+        vec3 position;
+        vec3 color;
+    };
     layout(shared, binding = 4) uniform Lighting
     {
+        ShadowLight shadowLights[2];
         vec3 ambient;
-        vec3 lightColor;
-        vec3 lightPos;
-        mat4 lightMatrix;
     };
-    layout(binding = 8) uniform sampler2DShadow	u_texShadow;
+    layout(binding = 8) uniform sampler2DShadow	u_texShadow[2];
 
     vec3 computeLighting(vec3 vsPosition, vec3 vsNormal)
     {
         vec3 eyeDir     = normalize(-vsPosition);
         vec3 light      = ambient;
 
-        vec4 lsPos      = lightMatrix * vec4(vsPosition,1);
-        vec3 lightAmt   = lightColor * textureProj(u_texShadow, lsPos).r;
+        for(int i=0; i<2; ++i)
+        {
+            vec4 lsPos      = shadowLights[i].matrix * vec4(vsPosition,1);
+            vec3 lightAmt   = shadowLights[i].color * textureProj(u_texShadow[i], lsPos).r;
 
-        vec3 lightDir   = normalize(lightPos - vsPosition);
-        vec3 halfDir    = normalize(lightDir + eyeDir);
+            vec3 lightDir   = normalize(shadowLights[i].position - vsPosition);
+            vec3 halfDir    = normalize(lightDir + eyeDir);
 
-        light += lightAmt * 0.8 * max(dot(lightDir, vsNormal), 0);
-        light += lightAmt * pow(max(dot(halfDir, vsNormal), 0), 256);
+            light += lightAmt * 0.8 * max(dot(lightDir, vsNormal), 0);
+            light += lightAmt * pow(max(dot(halfDir, vsNormal), 0), 256);
+        }
 
         return light;
     }
@@ -53,13 +60,15 @@ Renderer::Renderer()
     lightingUbo = GlUniformBuffer(lightingBlock->pack.size, GL_STREAM_DRAW);
     lightingUbo.bind(lightingBlock->binding);
 
-    shadowBuffer = GlFramebuffer::shadowBuffer(uint2(512,512));
+    shadowBuffer[0] = GlFramebuffer::shadowBuffer(uint2(512,512));
+    shadowBuffer[1] = GlFramebuffer::shadowBuffer(uint2(512, 512));
     shadowSampler = GlSampler(GL_LINEAR, GL_LINEAR, GL_CLAMP, true);
 }    
 
 void Renderer::render(GlFramebuffer & screen, const View & view, const std::vector<Object> & objs, const std::vector<Light> & lights)
 {
-    renderScene(shadowBuffer, lights[0].view, objs, lights, true);
+    renderScene(shadowBuffer[0], lights[0].view, objs, lights, true);
+    renderScene(shadowBuffer[1], lights[1].view, objs, lights, true);
 
     glClearColor(0.2f, 0.6f, 1, 1);
     renderScene(screen, view, objs, lights, false);
@@ -74,21 +83,33 @@ void Renderer::renderScene(GlFramebuffer & target, const View & view, const std:
     auto clipFromView = matClipFromView(view, aspectFromFramebuffer(target));
     auto viewFromWorld = matViewFromWorld(view);
 
-    auto shadowClipFromView = matClipFromView(lights[0].view, aspectFromFramebuffer(shadowBuffer));
-    auto shadowViewFromWorld = matViewFromWorld(lights[0].view);
-
-    // Compute matrix that goes from view space to biased shadow clip space
-    auto shadowTexFromClip = float4x4{ { 0.5f, 0, 0, 0 }, { 0, 0.5f, 0, 0 }, { 0, 0, 0.5f, 0 }, { 0.5f, 0.5f, 0.5f, 1 } };
-    auto worldFromView = view.pose.matrix();
-    auto shadowTexFromView = mul(shadowTexFromClip, shadowClipFromView, shadowViewFromWorld, worldFromView);
-
     // Set up lighting UBO
-    std::vector<uint8_t> buffer(lightingBlock->pack.size);
-    lightingBlock->set(buffer, "ambient", float3(0.2, 0.2, 0.2));
-    lightingBlock->set(buffer, "lightColor", lights[0].color);
-    lightingBlock->set(buffer, "lightPos", transformCoord(viewFromWorld, lights[0].view.pose.position));
-    lightingBlock->set(buffer, "lightMatrix", shadowTexFromView);
-    lightingUbo.setData(buffer, GL_STREAM_DRAW);
+    if (!renderDepth)
+    {
+        std::vector<uint8_t> buffer(lightingBlock->pack.size);
+        lightingBlock->set(buffer, "ambient", float3(0.2, 0.2, 0.2));
+
+        const auto worldFromView = view.pose.matrix();
+        const auto shadowTexFromClip = float4x4{ { 0.5f, 0, 0, 0 }, { 0, 0.5f, 0, 0 }, { 0, 0, 0.5f, 0 }, { 0.5f, 0.5f, 0.5f, 1 } };
+        for(int i=0; i<2; ++i)
+        {
+            // Compute prefix for light attributes
+            std::ostringstream ss; ss << "shadowLights[" << i << "]."; auto prefix = ss.str();
+
+            // Compute matrix that goes from view space to biased shadow clip space
+            auto shadowClipFromView = matClipFromView(lights[i].view, aspectFromFramebuffer(shadowBuffer[i]));
+            auto shadowViewFromWorld = matViewFromWorld(lights[i].view);
+            auto shadowTexFromView = mul(shadowTexFromClip, shadowClipFromView, shadowViewFromWorld, worldFromView);
+
+            // Set light values
+            lightingBlock->set(buffer, prefix + "color", lights[0].color);
+            lightingBlock->set(buffer, prefix + "position", transformCoord(viewFromWorld, lights[0].view.pose.position));
+            lightingBlock->set(buffer, prefix + "matrix", shadowTexFromView);
+            shadowBuffer[i].texture(0).bind(8+i, shadowSampler);
+        }
+
+        lightingUbo.setData(buffer, GL_STREAM_DRAW);
+    }
 
     std::vector<uint8_t> tbuffer(transformBlock->pack.size);
 
@@ -112,7 +133,6 @@ void Renderer::renderScene(GlFramebuffer & target, const View & view, const std:
         {
             if (obj.mat.texAlbedo) obj.mat.texAlbedo->bind(0, *obj.mat.samp);
             if (obj.mat.texNormal) obj.mat.texNormal->bind(1, *obj.mat.samp);
-            shadowBuffer.texture(0).bind(8, shadowSampler);
         }
         obj.mesh->draw();
     }

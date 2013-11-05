@@ -262,14 +262,14 @@ GlProgram::GlProgram(GlShader _vs, GlShader _fs) : GlProgram()
         // We only support sampler types in the global uniform block
         if (blockIndex == -1)
         {
-            if (layout) continue; //throw std::runtime_error("Unsupported type outside of uniform block in GLSL program: "+name);
+            if (layout != std::end(layouts)) continue; //throw std::runtime_error("Unsupported type outside of uniform block in GLSL program: "+name);
             SamplerDesc samp = {move(name), 0};
             glGetUniformiv(obj, glGetUniformLocation(obj, samp.name.c_str()), (GLint*)&samp.binding);
             desc.samplers.push_back(samp);
             continue;
         }
         
-        if (!layout) throw std::runtime_error("Unsupported type inside uniform block in GLSL program: "+name);
+        if (layout == std::end(layouts)) throw std::runtime_error("Unsupported type inside uniform block in GLSL program: "+name);
 
         // For uniforms that belong to a uniform block, determine their positioning and layout
         GLint offset, arrayStride, matrixStride, isRowMajor;
