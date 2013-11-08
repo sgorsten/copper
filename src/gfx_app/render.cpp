@@ -75,21 +75,18 @@ Renderer::Renderer()
     perViewBlock = blockReference.block("PerView");
     perViewUbo = GlUniformBuffer(perViewBlock->pack.size, GL_STREAM_DRAW);
 
-    shadowBuffer[0] = GlFramebuffer::shadowBuffer(uint2(512,512));
-    shadowBuffer[1] = GlFramebuffer::shadowBuffer(uint2(512, 512));
+    shadowBuffers[0] = GlFramebuffer::shadowBuffer(uint2(512, 512));
+    shadowBuffers[1] = GlFramebuffer::shadowBuffer(uint2(512, 512));
     shadowSampler = GlSampler(GL_LINEAR, GL_LINEAR, GL_CLAMP, true);
 }    
 
-static float4x4 matClipFromWorld(const View & view, float aspect) { return mul(perspectiveMatrixRhGl(view.vfov, aspect, view.nearClip, view.farClip), view.pose.inverse().matrix()); }
-static float aspectFromFramebuffer(const GlFramebuffer & fb) { auto dims = fb.dimensions(); return (float)dims.x / dims.y; }
-static size_t roundUp(size_t value, size_t amount) { return ((value + amount - 1) / amount)*amount; }
-
+static float4x4 matClipFromWorld(const GlFramebuffer & fb, const View & view) { auto dims = fb.dimensions(); return mul(perspectiveMatrixRhGl(view.vfov, (float)dims.x/dims.y, view.nearClip, view.farClip), view.pose.inverse().matrix()); }
 void Renderer::render(GlFramebuffer & screen, const View & view, const std::vector<Object> & objs, const std::vector<Light> & lights)
 {
     // Set up PerObject uniform block
     GLint uboAlignment; glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uboAlignment);
     std::vector<size_t> perObjectOffsets = { 0 };
-    for (auto & obj : objs) perObjectOffsets.push_back(roundUp(perObjectOffsets.back() + (obj.mat.perObjectBlock ? obj.mat.perObjectBlock->pack.size : 0), uboAlignment));
+    for (auto & obj : objs) perObjectOffsets.push_back(((perObjectOffsets.back() + (obj.mat.perObjectBlock ? obj.mat.perObjectBlock->pack.size : 0) + uboAlignment-1)/uboAlignment)*uboAlignment);
     std::vector<uint8_t> pobuffer(perObjectOffsets.back());
     for (size_t i = 0; i < objs.size(); ++i)
     {
@@ -100,8 +97,8 @@ void Renderer::render(GlFramebuffer & screen, const View & view, const std::vect
     perObjectUbo.setData(pobuffer, GL_STREAM_DRAW);
 
     // Render shadow buffers
-    renderScene(shadowBuffer[0], lights[0].view, perObjectOffsets, objs, lights, true);
-    renderScene(shadowBuffer[1], lights[1].view, perObjectOffsets, objs, lights, true);
+    renderScene(shadowBuffers[0], lights[0].view, perObjectOffsets, objs, lights, true);
+    renderScene(shadowBuffers[1], lights[1].view, perObjectOffsets, objs, lights, true);
 
     // Set up PerScene uniform block
     std::vector<uint8_t> psbuffer(perSceneBlock->pack.size);
@@ -112,8 +109,8 @@ void Renderer::render(GlFramebuffer & screen, const View & view, const std::vect
         std::ostringstream ss; ss << "shadowLights[" << i << "]."; auto prefix = ss.str();
         perSceneBlock->set(psbuffer, prefix + "color", lights[i].color);
         perSceneBlock->set(psbuffer, prefix + "position", lights[i].view.pose.position);
-        perSceneBlock->set(psbuffer, prefix + "matrix", mul(shadowTexFromClip, matClipFromWorld(lights[i].view, aspectFromFramebuffer(shadowBuffer[i]))));
-        shadowBuffer[i].texture(0).bind(8 + i, shadowSampler);
+        perSceneBlock->set(psbuffer, prefix + "matrix", mul(shadowTexFromClip, matClipFromWorld(shadowBuffers[i], lights[i].view)));
+        shadowBuffers[i].texture(0).bind(8 + i, shadowSampler);
     }
     perSceneUbo.setData(psbuffer, GL_STREAM_DRAW);
     perSceneUbo.bind(perSceneBlock->binding);
@@ -130,16 +127,19 @@ void Renderer::renderScene(GlFramebuffer & target, const View & view, const std:
 {
     // Set up PerView uniform block
     std::vector<uint8_t> pvbuffer(perViewBlock->pack.size);
-    perViewBlock->set(pvbuffer, "matClipFromWorld", matClipFromWorld(view, aspectFromFramebuffer(target)));
+    perViewBlock->set(pvbuffer, "matClipFromWorld", matClipFromWorld(target, view));
     perViewBlock->set(pvbuffer, "eyePosition", view.pose.position);
     perViewUbo.setData(pvbuffer, GL_STREAM_DRAW);
     perViewUbo.bind(perViewBlock->binding);
 
+    // Set up target and common GL state
     target.bind();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glCullFace(renderDepth ? GL_FRONT : GL_BACK);
+
+    // Render objects
     for (size_t i=0; i<objs.size(); ++i)
     {
         if (auto prog = renderDepth ? objs[i].mat.shadowProg.get() : objs[i].mat.prog.get())

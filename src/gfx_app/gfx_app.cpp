@@ -131,7 +131,7 @@ int main(int argc, char * argv[])
         Material matGreenwall = { litProg, geoOnlyProg };
         matGreenwall.set("u_texAlbedo", shared(loadTextureFromDdsFile("../../assets/greenwall_albedo.dds")), sampLinear);
         matGreenwall.set("u_texNormal", shared(loadTextureFromDdsFile("../../assets/greenwall_normal.dds")), sampLinear);
-        Material matLight = { unlitProg, geoOnlyProg };
+        Material matLight = { unlitProg, 0 };
 
         auto brickBox = shared(glMesh(normalBox({ 1.2f, 1.0f, 0.8f })));
         auto groundBox = shared(glMesh(normalBox(float3(8, 1, 8))));
@@ -191,6 +191,7 @@ int main(int argc, char * argv[])
                 case SDL_MOUSEBUTTONDOWN:
                 case SDL_MOUSEBUTTONUP:
                     if (e.button.button == SDL_BUTTON_RIGHT) ml = e.button.state == SDL_PRESSED;
+                    window.GrabCursor(e.button.state == SDL_PRESSED);
                     break;
                 case SDL_MOUSEMOTION:
                     if (ml)

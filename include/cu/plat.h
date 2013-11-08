@@ -18,6 +18,7 @@ namespace cu
         ~Window();
 
         void WriteGlVersion(std::ostream & out) const;
+        void GrabCursor(bool grab) { SDL_SetWindowGrab(window, grab ? SDL_TRUE : SDL_FALSE); }
         void SwapBuffers();
     };
 }

@@ -54,7 +54,7 @@ class Renderer
     GlProgram blockReference;
     const UniformBlockDesc * perSceneBlock, * perViewBlock;
     GlUniformBuffer perSceneUbo, perViewUbo, perObjectUbo;
-    GlFramebuffer shadowBuffer[2];
+    GlFramebuffer shadowBuffers[2];
     GlSampler shadowSampler;
 
     void renderScene(GlFramebuffer & target, const View & view, const std::vector<size_t> & perObjectOffsets, const std::vector<Object> & objs, const std::vector<Light> & lights, bool renderDepth);
