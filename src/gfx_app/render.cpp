@@ -5,7 +5,7 @@ const char * g_vertShaderPreamble = R"(
     layout(shared, binding = 0) uniform Transform
     {
         mat4 matClipFromModel;
-        mat4 matViewFromModel;
+        mat4 matWorldFromModel;
     };
 )";
 
@@ -21,24 +21,25 @@ const char * g_fragShaderPreamble = R"(
     {
         ShadowLight shadowLights[2];
         vec3 ambient;
+        vec3 eyePos;
     };
     layout(binding = 8) uniform sampler2DShadow	u_texShadow[2];
 
-    vec3 computeLighting(vec3 vsPosition, vec3 vsNormal)
+    vec3 computeLighting(vec3 wsPosition, vec3 wsNormal)
     {
-        vec3 eyeDir     = normalize(-vsPosition);
+        vec3 eyeDir     = normalize(eyePos - wsPosition);
         vec3 light      = ambient;
 
         for(int i=0; i<2; ++i)
         {
-            vec4 lsPos      = shadowLights[i].matrix * vec4(vsPosition,1);
+            vec4 lsPos      = shadowLights[i].matrix * vec4(wsPosition,1);
             vec3 lightAmt   = shadowLights[i].color * textureProj(u_texShadow[i], lsPos).r;
 
-            vec3 lightDir   = normalize(shadowLights[i].position - vsPosition);
+            vec3 lightDir   = normalize(shadowLights[i].position - wsPosition);
             vec3 halfDir    = normalize(lightDir + eyeDir);
 
-            light += lightAmt * 0.8 * max(dot(lightDir, vsNormal), 0);
-            light += lightAmt * pow(max(dot(halfDir, vsNormal), 0), 256);
+            light += lightAmt * 0.8 * max(dot(lightDir, wsNormal), 0);
+            light += lightAmt * pow(max(dot(halfDir, wsNormal), 0), 256);
         }
 
         return light;
@@ -87,7 +88,8 @@ void Renderer::renderScene(GlFramebuffer & target, const View & view, const std:
     if (!renderDepth)
     {
         std::vector<uint8_t> buffer(lightingBlock->pack.size);
-        lightingBlock->set(buffer, "ambient", float3(0.2, 0.2, 0.2));
+        lightingBlock->set(buffer, "ambient", float3(0.1, 0.1, 0.1));
+        lightingBlock->set(buffer, "eyePos", view.pose.position);
 
         const auto worldFromView = view.pose.matrix();
         const auto shadowTexFromClip = float4x4{ { 0.5f, 0, 0, 0 }, { 0, 0.5f, 0, 0 }, { 0, 0, 0.5f, 0 }, { 0.5f, 0.5f, 0.5f, 1 } };
@@ -99,11 +101,11 @@ void Renderer::renderScene(GlFramebuffer & target, const View & view, const std:
             // Compute matrix that goes from view space to biased shadow clip space
             auto shadowClipFromView = matClipFromView(lights[i].view, aspectFromFramebuffer(shadowBuffer[i]));
             auto shadowViewFromWorld = matViewFromWorld(lights[i].view);
-            auto shadowTexFromView = mul(shadowTexFromClip, shadowClipFromView, shadowViewFromWorld, worldFromView);
+            auto shadowTexFromView = mul(shadowTexFromClip, shadowClipFromView, shadowViewFromWorld);
 
             // Set light values
             lightingBlock->set(buffer, prefix + "color", lights[i].color);
-            lightingBlock->set(buffer, prefix + "position", transformCoord(viewFromWorld, lights[i].view.pose.position));
+            lightingBlock->set(buffer, prefix + "position", lights[i].view.pose.position);
             lightingBlock->set(buffer, prefix + "matrix", shadowTexFromView);
             shadowBuffer[i].texture(0).bind(8+i, shadowSampler);
         }
@@ -121,9 +123,8 @@ void Renderer::renderScene(GlFramebuffer & target, const View & view, const std:
     for (auto & obj : objs)
     {
         // Set up transform
-        auto viewFromModel = mul(viewFromWorld, obj.pose.matrix());
-        transformBlock->set(tbuffer, "matClipFromModel", mul(clipFromView, viewFromModel));
-        transformBlock->set(tbuffer, "matViewFromModel", viewFromModel);
+        transformBlock->set(tbuffer, "matClipFromModel", mul(clipFromView, viewFromWorld, obj.pose.matrix()));
+        transformBlock->set(tbuffer, "matWorldFromModel", obj.pose.matrix());
         transformUbo.setData(tbuffer, GL_DYNAMIC_DRAW);
 
         // Bind program and render

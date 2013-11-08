@@ -92,10 +92,10 @@ int main(int argc, char * argv[])
                 void main()
                 {
                     gl_Position = matClipFromModel * vec4(v_position,1);
-                    position    = (matViewFromModel * vec4(v_position,1)).xyz; // Assume transform outputs w=1
-                    normal      = (matViewFromModel * vec4(v_normal,0)).xyz;
-                    tangent     = (matViewFromModel * vec4(v_tangent,0)).xyz;
-                    bitangent   = (matViewFromModel * vec4(v_bitangent,0)).xyz;
+                    position    = (matWorldFromModel * vec4(v_position,1)).xyz; // Assume transform outputs w=1
+                    normal      = (matWorldFromModel * vec4(v_normal,0)).xyz;
+                    tangent     = (matWorldFromModel * vec4(v_tangent,0)).xyz;
+                    bitangent   = (matWorldFromModel * vec4(v_bitangent,0)).xyz;
                     texCoord    = v_texCoord;
                 }
             )"}},
