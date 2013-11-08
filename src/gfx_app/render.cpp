@@ -71,36 +71,24 @@ Renderer::Renderer()
 
     perSceneBlock = blockReference.block("PerScene");
     perSceneUbo = GlUniformBuffer(perSceneBlock->pack.size, GL_STREAM_DRAW);
-    perSceneUbo.bind(perSceneBlock->binding);
 
     perViewBlock = blockReference.block("PerView");
     perViewUbo = GlUniformBuffer(perViewBlock->pack.size, GL_STREAM_DRAW);
-    perViewUbo.bind(perViewBlock->binding);
 
     shadowBuffer[0] = GlFramebuffer::shadowBuffer(uint2(512,512));
     shadowBuffer[1] = GlFramebuffer::shadowBuffer(uint2(512, 512));
     shadowSampler = GlSampler(GL_LINEAR, GL_LINEAR, GL_CLAMP, true);
 }    
 
-void Renderer::render(GlFramebuffer & screen, const View & view, const std::vector<Object> & objs, const std::vector<Light> & lights)
-{
-    renderScene(shadowBuffer[0], lights[0].view, objs, lights, true);
-    renderScene(shadowBuffer[1], lights[1].view, objs, lights, true);
-
-    glClearColor(0.2f, 0.6f, 1, 1);
-    renderScene(screen, view, objs, lights, false);
-}
-
 static float4x4 matClipFromWorld(const View & view, float aspect) { return mul(perspectiveMatrixRhGl(view.vfov, aspect, view.nearClip, view.farClip), view.pose.inverse().matrix()); }
-static float aspectFromFramebuffer(const GlFramebuffer & fb) { auto dims = fb.dimensions(); return (float)dims.x/dims.y; }
+static float aspectFromFramebuffer(const GlFramebuffer & fb) { auto dims = fb.dimensions(); return (float)dims.x / dims.y; }
+static size_t roundUp(size_t value, size_t amount) { return ((value + amount - 1) / amount)*amount; }
 
-static size_t roundUp(size_t value, size_t amount) { return ((value+amount-1)/amount)*amount; }
-
-void Renderer::renderScene(GlFramebuffer & target, const View & view, const std::vector<Object> & objs, const std::vector<Light> & lights, bool renderDepth)
+void Renderer::render(GlFramebuffer & screen, const View & view, const std::vector<Object> & objs, const std::vector<Light> & lights)
 {
     // Set up PerObject uniform block
     GLint uboAlignment; glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uboAlignment);
-    std::vector<size_t> perObjectOffsets = {0};
+    std::vector<size_t> perObjectOffsets = { 0 };
     for (auto & obj : objs) perObjectOffsets.push_back(roundUp(perObjectOffsets.back() + (obj.mat.perObjectBlock ? obj.mat.perObjectBlock->pack.size : 0), uboAlignment));
     std::vector<uint8_t> pobuffer(perObjectOffsets.back());
     for (size_t i = 0; i < objs.size(); ++i)
@@ -110,31 +98,38 @@ void Renderer::renderScene(GlFramebuffer & target, const View & view, const std:
     }
     perObjectUbo.setData(pobuffer, GL_STREAM_DRAW);
 
+    // Render shadow buffers
+    renderScene(shadowBuffer[0], lights[0].view, perObjectOffsets, objs, lights, true);
+    renderScene(shadowBuffer[1], lights[1].view, perObjectOffsets, objs, lights, true);
+
+    // Set up PerScene uniform block
+    std::vector<uint8_t> psbuffer(perSceneBlock->pack.size);
+    perSceneBlock->set(psbuffer, "ambientLight", float3(0.05f, 0.05f, 0.05f));
+    const auto shadowTexFromClip = float4x4{ { 0.5f, 0, 0, 0 }, { 0, 0.5f, 0, 0 }, { 0, 0, 0.5f, 0 }, { 0.5f, 0.5f, 0.5f, 1 } };
+    for (int i = 0; i<2; ++i)
+    {
+        std::ostringstream ss; ss << "shadowLights[" << i << "]."; auto prefix = ss.str();
+        perSceneBlock->set(psbuffer, prefix + "color", lights[i].color);
+        perSceneBlock->set(psbuffer, prefix + "position", lights[i].view.pose.position);
+        perSceneBlock->set(psbuffer, prefix + "matrix", mul(shadowTexFromClip, matClipFromWorld(lights[i].view, aspectFromFramebuffer(shadowBuffer[i]))));
+        shadowBuffer[i].texture(0).bind(8 + i, shadowSampler);
+    }
+    perSceneUbo.setData(psbuffer, GL_STREAM_DRAW);
+    perSceneUbo.bind(perSceneBlock->binding);
+
+    // Render final scene
+    glClearColor(0.2f, 0.6f, 1, 1);
+    renderScene(screen, view, perObjectOffsets, objs, lights, false);
+}
+
+void Renderer::renderScene(GlFramebuffer & target, const View & view, const std::vector<size_t> & perObjectOffsets, const std::vector<Object> & objs, const std::vector<Light> & lights, bool renderDepth)
+{
     // Set up PerView uniform block
     std::vector<uint8_t> pvbuffer(perViewBlock->pack.size);
     perViewBlock->set(pvbuffer, "matClipFromWorld", matClipFromWorld(view, aspectFromFramebuffer(target)));
     perViewBlock->set(pvbuffer, "eyePosition", view.pose.position);
     perViewUbo.setData(pvbuffer, GL_STREAM_DRAW);
-
-    // Set up lighting UBO
-    if (!renderDepth)
-    {
-        std::vector<uint8_t> psbuffer(perSceneBlock->pack.size);
-        perSceneBlock->set(psbuffer, "ambientLight", float3(0.05f, 0.05f, 0.05f));
-
-        const auto worldFromView = view.pose.matrix();
-        const auto shadowTexFromClip = float4x4{ { 0.5f, 0, 0, 0 }, { 0, 0.5f, 0, 0 }, { 0, 0, 0.5f, 0 }, { 0.5f, 0.5f, 0.5f, 1 } };
-        for(int i=0; i<2; ++i)
-        {
-            std::ostringstream ss; ss << "shadowLights[" << i << "]."; auto prefix = ss.str();
-            perSceneBlock->set(psbuffer, prefix + "color", lights[i].color);
-            perSceneBlock->set(psbuffer, prefix + "position", lights[i].view.pose.position);
-            perSceneBlock->set(psbuffer, prefix + "matrix", mul(shadowTexFromClip, matClipFromWorld(lights[i].view, aspectFromFramebuffer(shadowBuffer[i]))));
-            shadowBuffer[i].texture(0).bind(8+i, shadowSampler);
-        }
-
-        perSceneUbo.setData(psbuffer, GL_STREAM_DRAW);
-    }
+    perViewUbo.bind(perViewBlock->binding);
 
     target.bind();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

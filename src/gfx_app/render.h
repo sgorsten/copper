@@ -49,7 +49,7 @@ class Renderer
     GlFramebuffer shadowBuffer[2];
     GlSampler shadowSampler;
 
-    void renderScene(GlFramebuffer & target, const View & view, const std::vector<Object> & objs, const std::vector<Light> & lights, bool renderDepth);
+    void renderScene(GlFramebuffer & target, const View & view, const std::vector<size_t> & perObjectOffsets, const std::vector<Object> & objs, const std::vector<Light> & lights, bool renderDepth);
 public:
     Renderer();
 
