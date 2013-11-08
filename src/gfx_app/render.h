@@ -33,14 +33,15 @@ struct Object
     Pose pose;
 };
 
+extern const char * g_shaderPreamble;
 extern const char * g_vertShaderPreamble;
 extern const char * g_fragShaderPreamble;
 
 class Renderer
 {
     GlProgram blockReference;
-    const UniformBlockDesc * transformBlock, * lightingBlock;
-    GlUniformBuffer transformUbo, lightingUbo;
+    const UniformBlockDesc * perViewBlock, * transformBlock, * lightingBlock;
+    GlUniformBuffer perViewUbo, transformUbo, lightingUbo;
     GlFramebuffer shadowBuffer[2];
     GlSampler shadowSampler;
 

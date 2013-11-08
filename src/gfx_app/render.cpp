@@ -1,6 +1,6 @@
 #include "render.h"
 
-const char * g_vertShaderPreamble = R"(
+const char * g_shaderPreamble = R"(
     #version 420
 
     // Quaternions
@@ -15,16 +15,23 @@ const char * g_vertShaderPreamble = R"(
     vec3 transformVector(Pose pose, vec3 vector) { return qtransform(pose.orientation, vector); }
     vec3 transformCoord(Pose pose, vec3 coord) { return pose.position + transformVector(pose, coord); }
 
-    layout(shared, binding = 0) uniform Transform
+    // Uniform block specified per view (cameras, shadow buffers, etc.)
+    layout(shared, binding = 9) uniform PerView
     {
         mat4 matClipFromWorld;
+        vec3 eyePosition;
+    };
+)";
+
+const char * g_vertShaderPreamble = R"(
+    layout(shared, binding = 0) uniform Transform
+    {
         Pose pose;
     };
     void setWorldPosition(vec3 position) { gl_Position = matClipFromWorld * vec4(position,1); }
 )";
 
 const char * g_fragShaderPreamble = R"(
-    #version 420
     struct ShadowLight
     {
         mat4 matrix;
@@ -35,13 +42,12 @@ const char * g_fragShaderPreamble = R"(
     {
         ShadowLight shadowLights[2];
         vec3 ambient;
-        vec3 eyePos;
     };
     layout(binding = 8) uniform sampler2DShadow	u_texShadow[2];
 
     vec3 computeLighting(vec3 wsPosition, vec3 wsNormal)
     {
-        vec3 eyeDir     = normalize(eyePos - wsPosition);
+        vec3 eyeDir     = normalize(eyePosition - wsPosition);
         vec3 light      = ambient;
 
         for(int i=0; i<2; ++i)
@@ -63,9 +69,13 @@ const char * g_fragShaderPreamble = R"(
 Renderer::Renderer()
 {
     blockReference = GlProgram(
-        { GL_VERTEX_SHADER, { g_vertShaderPreamble, "void main() { setWorldPosition(vec3(0,0,0)); }" } },
-        { GL_FRAGMENT_SHADER, { g_fragShaderPreamble, "layout(location = 0) out vec4 f_color; void main() { f_color = vec4(ambient,1); }" } }
+        { GL_VERTEX_SHADER, { g_shaderPreamble, g_vertShaderPreamble, "void main() { setWorldPosition(transformCoord(pose,vec3(0,0,0))); }" } },
+        { GL_FRAGMENT_SHADER, { g_shaderPreamble, g_fragShaderPreamble, "layout(location = 0) out vec4 f_color; void main() { f_color = vec4(ambient,1); }" } }
     );
+
+    perViewBlock = blockReference.block("PerView");
+    perViewUbo = GlUniformBuffer(perViewBlock->pack.size, GL_STREAM_DRAW);
+    perViewUbo.bind(perViewBlock->binding);
 
     transformBlock = blockReference.block("Transform");
     transformUbo = GlUniformBuffer(transformBlock->pack.size, GL_DYNAMIC_DRAW);
@@ -94,7 +104,11 @@ static float aspectFromFramebuffer(const GlFramebuffer & fb) { auto dims = fb.di
 
 void Renderer::renderScene(GlFramebuffer & target, const View & view, const std::vector<Object> & objs, const std::vector<Light> & lights, bool renderDepth)
 {
-    auto clipFromWorld = matClipFromWorld(view, aspectFromFramebuffer(target));
+    // Set up PerView uniform block
+    std::vector<uint8_t> pvbuffer(perViewBlock->pack.size);
+    perViewBlock->set(pvbuffer, "matClipFromWorld", matClipFromWorld(view, aspectFromFramebuffer(target)));
+    perViewBlock->set(pvbuffer, "eyePosition", view.pose.position);
+    perViewUbo.setData(pvbuffer, GL_STREAM_DRAW);
 
     // Set up lighting UBO
     if (!renderDepth)
@@ -127,7 +141,6 @@ void Renderer::renderScene(GlFramebuffer & target, const View & view, const std:
     for (auto & obj : objs)
     {
         // Set up transform
-        transformBlock->set(tbuffer, "matClipFromWorld", clipFromWorld);
         transformBlock->set(tbuffer, "pose.position",    obj.pose.position);
         transformBlock->set(tbuffer, "pose.orientation", obj.pose.orientation);
         transformUbo.setData(tbuffer, GL_DYNAMIC_DRAW);

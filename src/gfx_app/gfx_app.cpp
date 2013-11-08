@@ -52,7 +52,7 @@ int main(int argc, char * argv[])
         window.WriteGlVersion(std::cout);
 
         auto unlitProg = shared(GlProgram(
-            {GL_VERTEX_SHADER, {g_vertShaderPreamble, R"(
+            {GL_VERTEX_SHADER, {g_shaderPreamble, g_vertShaderPreamble, R"(
                 layout(location = 0) in vec3 v_position;
                 layout(location = 1) in vec4 v_color;
                 out vec4 color;
@@ -62,7 +62,7 @@ int main(int argc, char * argv[])
                     color = v_color;
                 }
             )"}},
-            {GL_FRAGMENT_SHADER, {g_fragShaderPreamble, R"(
+            {GL_FRAGMENT_SHADER, {g_shaderPreamble, g_fragShaderPreamble, R"(
                 in vec4 color;
                 layout(location = 0) out vec4 f_color;
                 void main()
@@ -74,11 +74,11 @@ int main(int argc, char * argv[])
 
         // Program which renders only geometry for static meshes, useful for shadow mapping
         auto geoOnlyProg = shared(GlProgram(
-            { GL_VERTEX_SHADER, {g_vertShaderPreamble, "layout(location = 0) in vec3 v_position;\nvoid main() { setWorldPosition(transformCoord(pose,v_position)); }"}},
-            { GL_FRAGMENT_SHADER, {g_fragShaderPreamble, "void main() {}"}}));
+            { GL_VERTEX_SHADER, {g_shaderPreamble, g_vertShaderPreamble, "layout(location = 0) in vec3 v_position;\nvoid main() { setWorldPosition(transformCoord(pose,v_position)); }"}},
+            { GL_FRAGMENT_SHADER, {g_shaderPreamble, g_fragShaderPreamble, "void main() {}"}}));
 
         auto litProg = shared(GlProgram(
-            {GL_VERTEX_SHADER, {g_vertShaderPreamble, R"(
+            {GL_VERTEX_SHADER, {g_shaderPreamble, g_vertShaderPreamble, R"(
                 layout(location = 0) in vec3 v_position;
                 layout(location = 1) in vec3 v_normal;
                 layout(location = 2) in vec3 v_tangent;
@@ -99,7 +99,7 @@ int main(int argc, char * argv[])
                     setWorldPosition(position);
                 }
             )"}},
-            {GL_FRAGMENT_SHADER, {g_fragShaderPreamble, R"(
+            { GL_FRAGMENT_SHADER, {g_shaderPreamble, g_fragShaderPreamble, R"(
                 layout(binding = 0) uniform sampler2D u_texAlbedo;
                 layout(binding = 1) uniform sampler2D u_texNormal;
                 in vec3 position;
