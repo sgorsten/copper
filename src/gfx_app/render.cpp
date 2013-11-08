@@ -24,10 +24,6 @@ const char * g_shaderPreamble = R"(
 )";
 
 const char * g_vertShaderPreamble = R"(
-    layout(shared, binding = 0) uniform Transform
-    {
-        Pose pose;
-    };
     void setWorldPosition(vec3 position) { gl_Position = matClipFromWorld * vec4(position,1); }
 )";
 
@@ -38,17 +34,17 @@ const char * g_fragShaderPreamble = R"(
         vec3 position;
         vec3 color;
     };
-    layout(shared, binding = 4) uniform Lighting
+    layout(shared, binding = 8) uniform PerScene
     {
         ShadowLight shadowLights[2];
-        vec3 ambient;
+        vec3 ambientLight;
     };
     layout(binding = 8) uniform sampler2DShadow	u_texShadow[2];
 
     vec3 computeLighting(vec3 wsPosition, vec3 wsNormal)
     {
         vec3 eyeDir     = normalize(eyePosition - wsPosition);
-        vec3 light      = ambient;
+        vec3 light      = ambientLight;
 
         for(int i=0; i<2; ++i)
         {
@@ -69,21 +65,17 @@ const char * g_fragShaderPreamble = R"(
 Renderer::Renderer()
 {
     blockReference = GlProgram(
-        { GL_VERTEX_SHADER, { g_shaderPreamble, g_vertShaderPreamble, "void main() { setWorldPosition(transformCoord(pose,vec3(0,0,0))); }" } },
-        { GL_FRAGMENT_SHADER, { g_shaderPreamble, g_fragShaderPreamble, "layout(location = 0) out vec4 f_color; void main() { f_color = vec4(ambient,1); }" } }
+        { GL_VERTEX_SHADER, { g_shaderPreamble, g_vertShaderPreamble, "void main() { setWorldPosition(vec3(0,0,0)); }" } },
+        { GL_FRAGMENT_SHADER, { g_shaderPreamble, g_fragShaderPreamble, "layout(location = 0) out vec4 f_color; void main() { f_color = vec4(ambientLight,1); }" } }
     );
+
+    perSceneBlock = blockReference.block("PerScene");
+    perSceneUbo = GlUniformBuffer(perSceneBlock->pack.size, GL_STREAM_DRAW);
+    perSceneUbo.bind(perSceneBlock->binding);
 
     perViewBlock = blockReference.block("PerView");
     perViewUbo = GlUniformBuffer(perViewBlock->pack.size, GL_STREAM_DRAW);
     perViewUbo.bind(perViewBlock->binding);
-
-    transformBlock = blockReference.block("Transform");
-    transformUbo = GlUniformBuffer(transformBlock->pack.size, GL_DYNAMIC_DRAW);
-    transformUbo.bind(transformBlock->binding);
-
-    lightingBlock = blockReference.block("Lighting");   
-    lightingUbo = GlUniformBuffer(lightingBlock->pack.size, GL_STREAM_DRAW);
-    lightingUbo.bind(lightingBlock->binding);
 
     shadowBuffer[0] = GlFramebuffer::shadowBuffer(uint2(512,512));
     shadowBuffer[1] = GlFramebuffer::shadowBuffer(uint2(512, 512));
@@ -102,8 +94,22 @@ void Renderer::render(GlFramebuffer & screen, const View & view, const std::vect
 static float4x4 matClipFromWorld(const View & view, float aspect) { return mul(perspectiveMatrixRhGl(view.vfov, aspect, view.nearClip, view.farClip), view.pose.inverse().matrix()); }
 static float aspectFromFramebuffer(const GlFramebuffer & fb) { auto dims = fb.dimensions(); return (float)dims.x/dims.y; }
 
+static size_t roundUp(size_t value, size_t amount) { return ((value+amount-1)/amount)*amount; }
+
 void Renderer::renderScene(GlFramebuffer & target, const View & view, const std::vector<Object> & objs, const std::vector<Light> & lights, bool renderDepth)
 {
+    // Set up PerObject uniform block
+    GLint uboAlignment; glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uboAlignment);
+    std::vector<size_t> perObjectOffsets = {0};
+    for (auto & obj : objs) perObjectOffsets.push_back(roundUp(perObjectOffsets.back() + (obj.mat.perObjectBlock ? obj.mat.perObjectBlock->pack.size : 0), uboAlignment));
+    std::vector<uint8_t> pobuffer(perObjectOffsets.back());
+    for (size_t i = 0; i < objs.size(); ++i)
+    {
+        objs[i].mat.perObjectBlock->set(pobuffer.data() + perObjectOffsets[i], "pose.position", objs[i].pose.position);
+        objs[i].mat.perObjectBlock->set(pobuffer.data() + perObjectOffsets[i], "pose.orientation", objs[i].pose.orientation);
+    }
+    perObjectUbo.setData(pobuffer, GL_STREAM_DRAW);
+
     // Set up PerView uniform block
     std::vector<uint8_t> pvbuffer(perViewBlock->pack.size);
     perViewBlock->set(pvbuffer, "matClipFromWorld", matClipFromWorld(view, aspectFromFramebuffer(target)));
@@ -113,46 +119,40 @@ void Renderer::renderScene(GlFramebuffer & target, const View & view, const std:
     // Set up lighting UBO
     if (!renderDepth)
     {
-        std::vector<uint8_t> buffer(lightingBlock->pack.size);
-        lightingBlock->set(buffer, "ambient", float3(0.05f, 0.05f, 0.05f));
-        lightingBlock->set(buffer, "eyePos", view.pose.position);
+        std::vector<uint8_t> psbuffer(perSceneBlock->pack.size);
+        perSceneBlock->set(psbuffer, "ambientLight", float3(0.05f, 0.05f, 0.05f));
 
         const auto worldFromView = view.pose.matrix();
         const auto shadowTexFromClip = float4x4{ { 0.5f, 0, 0, 0 }, { 0, 0.5f, 0, 0 }, { 0, 0, 0.5f, 0 }, { 0.5f, 0.5f, 0.5f, 1 } };
         for(int i=0; i<2; ++i)
         {
             std::ostringstream ss; ss << "shadowLights[" << i << "]."; auto prefix = ss.str();
-            lightingBlock->set(buffer, prefix + "color", lights[i].color);
-            lightingBlock->set(buffer, prefix + "position", lights[i].view.pose.position);
-            lightingBlock->set(buffer, prefix + "matrix", mul(shadowTexFromClip, matClipFromWorld(lights[i].view, aspectFromFramebuffer(shadowBuffer[i]))));
+            perSceneBlock->set(psbuffer, prefix + "color", lights[i].color);
+            perSceneBlock->set(psbuffer, prefix + "position", lights[i].view.pose.position);
+            perSceneBlock->set(psbuffer, prefix + "matrix", mul(shadowTexFromClip, matClipFromWorld(lights[i].view, aspectFromFramebuffer(shadowBuffer[i]))));
             shadowBuffer[i].texture(0).bind(8+i, shadowSampler);
         }
 
-        lightingUbo.setData(buffer, GL_STREAM_DRAW);
+        perSceneUbo.setData(psbuffer, GL_STREAM_DRAW);
     }
-
-    std::vector<uint8_t> tbuffer(transformBlock->pack.size);
 
     target.bind();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glCullFace(renderDepth ? GL_FRONT : GL_BACK);
-    for (auto & obj : objs)
+    for (size_t i=0; i<objs.size(); ++i)
     {
-        // Set up transform
-        transformBlock->set(tbuffer, "pose.position",    obj.pose.position);
-        transformBlock->set(tbuffer, "pose.orientation", obj.pose.orientation);
-        transformUbo.setData(tbuffer, GL_DYNAMIC_DRAW);
-
-        // Bind program and render
-        const auto & prog = renderDepth ? *obj.mat.shadowProg : *obj.mat.prog;
-        prog.use();
-        if (!renderDepth)
+        if (auto prog = renderDepth ? objs[i].mat.shadowProg.get() : objs[i].mat.prog.get())
         {
-            if (obj.mat.texAlbedo) obj.mat.texAlbedo->bind(0, *obj.mat.samp);
-            if (obj.mat.texNormal) obj.mat.texNormal->bind(1, *obj.mat.samp);
+            if (objs[i].mat.perObjectBlock) perObjectUbo.bind(objs[i].mat.perObjectBlock->binding, perObjectOffsets[i], perObjectOffsets[i + 1] - perObjectOffsets[i]);
+            if (!renderDepth)
+            {
+                if (objs[i].mat.texAlbedo) objs[i].mat.texAlbedo->bind(0, *objs[i].mat.samp);
+                if (objs[i].mat.texNormal) objs[i].mat.texNormal->bind(1, *objs[i].mat.samp);
+            }
+            prog->use();
+            objs[i].mesh->draw();
         }
-        obj.mesh->draw();
     }
 }

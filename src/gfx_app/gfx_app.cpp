@@ -53,6 +53,7 @@ int main(int argc, char * argv[])
 
         auto unlitProg = shared(GlProgram(
             {GL_VERTEX_SHADER, {g_shaderPreamble, g_vertShaderPreamble, R"(
+                uniform PerObject { Pose pose; };
                 layout(location = 0) in vec3 v_position;
                 layout(location = 1) in vec4 v_color;
                 out vec4 color;
@@ -74,11 +75,12 @@ int main(int argc, char * argv[])
 
         // Program which renders only geometry for static meshes, useful for shadow mapping
         auto geoOnlyProg = shared(GlProgram(
-            { GL_VERTEX_SHADER, {g_shaderPreamble, g_vertShaderPreamble, "layout(location = 0) in vec3 v_position;\nvoid main() { setWorldPosition(transformCoord(pose,v_position)); }"}},
+            { GL_VERTEX_SHADER, {g_shaderPreamble, g_vertShaderPreamble, "uniform PerObject { Pose pose; }; layout(location = 0) in vec3 v_position;\nvoid main() { setWorldPosition(transformCoord(pose,v_position)); }"}},
             { GL_FRAGMENT_SHADER, {g_shaderPreamble, g_fragShaderPreamble, "void main() {}"}}));
 
         auto litProg = shared(GlProgram(
             {GL_VERTEX_SHADER, {g_shaderPreamble, g_vertShaderPreamble, R"(
+                uniform PerObject { Pose pose; };
                 layout(location = 0) in vec3 v_position;
                 layout(location = 1) in vec3 v_normal;
                 layout(location = 2) in vec3 v_tangent;
@@ -124,7 +126,7 @@ int main(int argc, char * argv[])
         const ubyte4 checkerboardPixels[] = { { 32, 32, 32, 255 }, { 255, 255, 255, 255 }, { 255, 255, 255, 255 }, { 32, 32, 32, 255 } }, flatNormal = { 127, 127, 255, 255 };
         Material matCheckerboard = { litProg, geoOnlyProg, shared(GlTexture(GL_RGBA, { 2, 2 }, 1, checkerboardPixels)), shared(GlTexture(GL_RGBA, { 1, 1 }, 1, &flatNormal)), sampNearest };
         Material matGreenwall = { litProg, geoOnlyProg, shared(loadTextureFromDdsFile("../../assets/greenwall_albedo.dds")), shared(loadTextureFromDdsFile("../../assets/greenwall_normal.dds")), sampLinear };
-        Material matLight = {unlitProg, geoOnlyProg, 0, 0};
+        Material matLight = {unlitProg, geoOnlyProg, 0, 0, 0};
 
         auto brickBox = shared(glMesh(normalBox({ 1.2f, 1.0f, 0.8f })));
         auto groundBox = shared(glMesh(normalBox(float3(8, 1, 8))));

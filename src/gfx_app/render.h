@@ -24,6 +24,10 @@ struct Material
     std::shared_ptr<const GlProgram> prog, shadowProg;
     std::shared_ptr<const GlTexture> texAlbedo, texNormal;
     std::shared_ptr<const GlSampler> samp;
+    const UniformBlockDesc * perObjectBlock;
+
+    Material(std::shared_ptr<const GlProgram> prog, std::shared_ptr<const GlProgram> shadowProg, std::shared_ptr<const GlTexture> texAlbedo, std::shared_ptr<const GlTexture> texNormal, std::shared_ptr<const GlSampler> samp) 
+        : prog(prog), shadowProg(shadowProg), texAlbedo(texAlbedo), texNormal(texNormal), samp(samp), perObjectBlock(prog->block("PerObject")) {}
 };
 
 struct Object
@@ -40,8 +44,8 @@ extern const char * g_fragShaderPreamble;
 class Renderer
 {
     GlProgram blockReference;
-    const UniformBlockDesc * perViewBlock, * transformBlock, * lightingBlock;
-    GlUniformBuffer perViewUbo, transformUbo, lightingUbo;
+    const UniformBlockDesc * perSceneBlock, * perViewBlock;
+    GlUniformBuffer perSceneUbo, perViewUbo, perObjectUbo;
     GlFramebuffer shadowBuffer[2];
     GlSampler shadowSampler;
 

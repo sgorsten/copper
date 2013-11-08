@@ -23,6 +23,7 @@ namespace cu
         ~GlUniformBuffer() { glDeleteBuffers(1, &obj); }
 
         void bind(GLuint index) const { glBindBufferBase(GL_UNIFORM_BUFFER, index, obj); } // Warning: This command affects global GL state
+        void bind(GLuint index, GLintptr offset, GLsizeiptr size) const { glBindBufferRange(GL_UNIFORM_BUFFER, index, obj, offset, size); } // Warning: This command affects global GL state
 
         void setData(const void * data, size_t size, GLenum usage);
         void setData(const std::vector<uint8_t> & bytes, GLenum usage) { setData(bytes.data(), bytes.size(), usage); }
