@@ -93,6 +93,7 @@ void Renderer::render(GlFramebuffer & screen, const View & view, const std::vect
     std::vector<uint8_t> pobuffer(perObjectOffsets.back());
     for (size_t i = 0; i < objs.size(); ++i)
     {
+        std::copy(begin(objs[i].mat.uniformBindings), end(objs[i].mat.uniformBindings), begin(pobuffer) + perObjectOffsets[i]);
         objs[i].mat.perObjectBlock->set(pobuffer.data() + perObjectOffsets[i], "pose.position", objs[i].pose.position);
         objs[i].mat.perObjectBlock->set(pobuffer.data() + perObjectOffsets[i], "pose.orientation", objs[i].pose.orientation);
     }
@@ -120,6 +121,9 @@ void Renderer::render(GlFramebuffer & screen, const View & view, const std::vect
     // Render final scene
     glClearColor(0.2f, 0.6f, 1, 1);
     renderScene(screen, view, perObjectOffsets, objs, lights, false);
+
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
 }
 
 void Renderer::renderScene(GlFramebuffer & target, const View & view, const std::vector<size_t> & perObjectOffsets, const std::vector<Object> & objs, const std::vector<Light> & lights, bool renderDepth)
@@ -141,11 +145,7 @@ void Renderer::renderScene(GlFramebuffer & target, const View & view, const std:
         if (auto prog = renderDepth ? objs[i].mat.shadowProg.get() : objs[i].mat.prog.get())
         {
             if (objs[i].mat.perObjectBlock) perObjectUbo.bind(objs[i].mat.perObjectBlock->binding, perObjectOffsets[i], perObjectOffsets[i + 1] - perObjectOffsets[i]);
-            if (!renderDepth)
-            {
-                if (objs[i].mat.texAlbedo) objs[i].mat.texAlbedo->bind(0, *objs[i].mat.samp);
-                if (objs[i].mat.texNormal) objs[i].mat.texNormal->bind(1, *objs[i].mat.samp);
-            }
+            if (!renderDepth) for (auto & binding : objs[i].mat.samplerBindings) binding.tex->bind(binding.unit, *binding.samp);
             prog->use();
             objs[i].mesh->draw();
         }

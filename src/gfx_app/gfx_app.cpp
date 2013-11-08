@@ -80,7 +80,7 @@ int main(int argc, char * argv[])
 
         auto litProg = shared(GlProgram(
             {GL_VERTEX_SHADER, {g_shaderPreamble, g_vertShaderPreamble, R"(
-                uniform PerObject { Pose pose; };
+                uniform PerObject { Pose pose; vec3 emission; };
                 layout(location = 0) in vec3 v_position;
                 layout(location = 1) in vec3 v_normal;
                 layout(location = 2) in vec3 v_tangent;
@@ -102,6 +102,7 @@ int main(int argc, char * argv[])
                 }
             )"}},
             { GL_FRAGMENT_SHADER, {g_shaderPreamble, g_fragShaderPreamble, R"(
+                uniform PerObject { Pose pose; vec3 emission; };
                 layout(binding = 0) uniform sampler2D u_texAlbedo;
                 layout(binding = 1) uniform sampler2D u_texNormal;
                 in vec3 position;
@@ -115,7 +116,7 @@ int main(int argc, char * argv[])
                     vec3 tsNormal = texture(u_texNormal, texCoord).xyz*2 - 1;
                     vec3 vsNormal = normalize(normalize(tangent) * tsNormal.x + normalize(bitangent) * tsNormal.y + normalize(normal) * tsNormal.z);
                     vec4 albedo = texture(u_texAlbedo, texCoord);
-                    f_color = vec4(albedo.rgb * computeLighting(position, vsNormal), albedo.a);
+                    f_color = vec4(emission + albedo.rgb * computeLighting(position, vsNormal), albedo.a);
                 }
             )"}}
         ));
@@ -124,9 +125,13 @@ int main(int argc, char * argv[])
         auto sampLinear = shared(GlSampler(GL_LINEAR, GL_LINEAR_MIPMAP_LINEAR, GL_REPEAT, false));
 
         const ubyte4 checkerboardPixels[] = { { 32, 32, 32, 255 }, { 255, 255, 255, 255 }, { 255, 255, 255, 255 }, { 32, 32, 32, 255 } }, flatNormal = { 127, 127, 255, 255 };
-        Material matCheckerboard = { litProg, geoOnlyProg, shared(GlTexture(GL_RGBA, { 2, 2 }, 1, checkerboardPixels)), shared(GlTexture(GL_RGBA, { 1, 1 }, 1, &flatNormal)), sampNearest };
-        Material matGreenwall = { litProg, geoOnlyProg, shared(loadTextureFromDdsFile("../../assets/greenwall_albedo.dds")), shared(loadTextureFromDdsFile("../../assets/greenwall_normal.dds")), sampLinear };
-        Material matLight = {unlitProg, geoOnlyProg, 0, 0, 0};
+        Material matCheckerboard = { litProg, geoOnlyProg };
+        matCheckerboard.set("u_texAlbedo", shared(GlTexture(GL_RGBA, { 2, 2 }, 1, checkerboardPixels)), sampNearest);
+        matCheckerboard.set("u_texNormal", shared(GlTexture(GL_RGBA, { 1, 1 }, 1, &flatNormal)), sampNearest);
+        Material matGreenwall = { litProg, geoOnlyProg };
+        matGreenwall.set("u_texAlbedo", shared(loadTextureFromDdsFile("../../assets/greenwall_albedo.dds")), sampLinear);
+        matGreenwall.set("u_texNormal", shared(loadTextureFromDdsFile("../../assets/greenwall_normal.dds")), sampLinear);
+        Material matLight = { unlitProg, geoOnlyProg };
 
         auto brickBox = shared(glMesh(normalBox({ 1.2f, 1.0f, 0.8f })));
         auto groundBox = shared(glMesh(normalBox(float3(8, 1, 8))));
@@ -214,6 +219,7 @@ int main(int argc, char * argv[])
                 objs[3].pose.orientation = qrotation(float3(1, 0, 0), t);
                 objs[4].pose.orientation = qrotation(float3(0, 1, 0), t);
                 objs[5].pose.orientation = qrotation(float3(0, 0, 1), t);
+                objs[6].mat.set("emission", float3(1,1,1) * ((sin(t)+1)/2));
             }
 
             renderer.render(fbScreen, view, objs, lights);

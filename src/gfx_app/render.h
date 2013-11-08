@@ -21,13 +21,21 @@ struct Light
 
 struct Material
 {
-    std::shared_ptr<const GlProgram> prog, shadowProg;
-    std::shared_ptr<const GlTexture> texAlbedo, texNormal;
-    std::shared_ptr<const GlSampler> samp;
-    const UniformBlockDesc * perObjectBlock;
+    struct SamplerBinding { GLuint unit; std::shared_ptr<const GlTexture> tex; std::shared_ptr<const GlSampler> samp; };
 
-    Material(std::shared_ptr<const GlProgram> prog, std::shared_ptr<const GlProgram> shadowProg, std::shared_ptr<const GlTexture> texAlbedo, std::shared_ptr<const GlTexture> texNormal, std::shared_ptr<const GlSampler> samp) 
-        : prog(prog), shadowProg(shadowProg), texAlbedo(texAlbedo), texNormal(texNormal), samp(samp), perObjectBlock(prog->block("PerObject")) {}
+    std::shared_ptr<const GlProgram> prog, shadowProg;
+    const UniformBlockDesc * perObjectBlock;
+    std::vector<uint8_t> uniformBindings;
+    std::vector<SamplerBinding> samplerBindings;
+
+    Material(std::shared_ptr<const GlProgram> prog, std::shared_ptr<const GlProgram> shadowProg) 
+        : prog(prog), shadowProg(shadowProg), perObjectBlock(prog->block("PerObject")), uniformBindings(perObjectBlock ? perObjectBlock->pack.size : 0) {}
+
+    template<class T> void set(const std::string & uniformName, const T & value) { if(perObjectBlock) perObjectBlock->set(uniformBindings, uniformName, value); }
+    void set(const std::string & samplerName, std::shared_ptr<const GlTexture> tex, std::shared_ptr<const GlSampler> samp)
+    {
+        if (auto s = prog->sampler(samplerName.c_str())) samplerBindings.push_back({ s->binding, move(tex), move(samp) }); 
+    }
 };
 
 struct Object
