@@ -58,8 +58,8 @@ int main(int argc, char * argv[])
                 out vec4 color;
                 void main()
                 {
-                    gl_Position = matClipFromModel * vec4(v_position,1);
-                    color       = v_color;
+                    setWorldPosition(transformCoord(pose,v_position));
+                    color = v_color;
                 }
             )"}},
             {GL_FRAGMENT_SHADER, {g_fragShaderPreamble, R"(
@@ -74,7 +74,7 @@ int main(int argc, char * argv[])
 
         // Program which renders only geometry for static meshes, useful for shadow mapping
         auto geoOnlyProg = shared(GlProgram(
-            { GL_VERTEX_SHADER, {g_vertShaderPreamble, "layout(location = 0) in vec3 v_position;\nvoid main() { gl_Position = matClipFromModel * vec4(v_position,1); }"}},
+            { GL_VERTEX_SHADER, {g_vertShaderPreamble, "layout(location = 0) in vec3 v_position;\nvoid main() { setWorldPosition(transformCoord(pose,v_position)); }"}},
             { GL_FRAGMENT_SHADER, {g_fragShaderPreamble, "void main() {}"}}));
 
         auto litProg = shared(GlProgram(
@@ -91,12 +91,12 @@ int main(int argc, char * argv[])
                 out vec2 texCoord;
                 void main()
                 {
-                    gl_Position = matClipFromModel * vec4(v_position,1);
-                    position    = (matWorldFromModel * vec4(v_position,1)).xyz; // Assume transform outputs w=1
-                    normal      = (matWorldFromModel * vec4(v_normal,0)).xyz;
-                    tangent     = (matWorldFromModel * vec4(v_tangent,0)).xyz;
-                    bitangent   = (matWorldFromModel * vec4(v_bitangent,0)).xyz;
+                    position    = transformCoord(pose, v_position);
+                    normal      = transformVector(pose, v_normal);
+                    tangent     = transformVector(pose, v_tangent);
+                    bitangent   = transformVector(pose, v_bitangent);
                     texCoord    = v_texCoord;
+                    setWorldPosition(position);
                 }
             )"}},
             {GL_FRAGMENT_SHADER, {g_fragShaderPreamble, R"(
@@ -149,8 +149,8 @@ int main(int argc, char * argv[])
         View view = { 1.0f, 0.1f, 16.0f, Pose() };
 
         std::vector<Light> lights = {
-            { {1,1.00f,0.75f}, {1.0f, 0.1f, 16.0f, objs[1].pose} },
-            { {1,0.25f,0.25f}, {1.0f, 0.1f, 16.0f, objs[2].pose} }
+            { {1,1.00f,0.75f}, {1.0f, 0.2f, 16.0f, objs[1].pose} },
+            { {1,0.25f,0.25f}, {1.0f, 0.2f, 16.0f, objs[2].pose} }
         };
 
         Renderer renderer;

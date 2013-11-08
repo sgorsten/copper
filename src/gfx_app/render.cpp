@@ -2,11 +2,25 @@
 
 const char * g_vertShaderPreamble = R"(
     #version 420
+
+    // Quaternions
+    vec4 qmul(vec4 a, vec4 b) { return vec4(a.x*b.w+a.w*b.x+a.y*b.z-a.z*b.y, a.y*b.w+a.w*b.y+a.z*b.x-a.x*b.z, a.z*b.w+a.w*b.z+a.x*b.y-a.y*b.x, a.w*b.w-a.x*b.x-a.y*b.y-a.z*b.z); }  
+    vec3 qxdir(vec4 q) { return vec3(q.w*q.w+q.x*q.x-q.y*q.y-q.z*q.z, (q.x*q.y+q.z*q.w)*2, (q.z*q.x-q.y*q.w)*2); } 
+    vec3 qydir(vec4 q) { return vec3((q.x*q.y-q.z*q.w)*2, q.w*q.w-q.x*q.x+q.y*q.y-q.z*q.z, (q.y*q.z+q.x*q.w)*2); } 
+    vec3 qzdir(vec4 q) { return vec3((q.z*q.x+q.y*q.w)*2, (q.y*q.z-q.x*q.w)*2, q.w*q.w-q.x*q.x-q.y*q.y+q.z*q.z); } 
+    vec3 qtransform(vec4 q, vec3 v) { return qxdir(q)*v.x + qydir(q)*v.y + qzdir(q)*v.z; }
+
+    // Poses
+    struct Pose { vec3 position; vec4 orientation; };
+    vec3 transformVector(Pose pose, vec3 vector) { return qtransform(pose.orientation, vector); }
+    vec3 transformCoord(Pose pose, vec3 coord) { return pose.position + transformVector(pose, coord); }
+
     layout(shared, binding = 0) uniform Transform
     {
-        mat4 matClipFromModel;
-        mat4 matWorldFromModel;
+        mat4 matClipFromWorld;
+        Pose pose;
     };
+    void setWorldPosition(vec3 position) { gl_Position = matClipFromWorld * vec4(position,1); }
 )";
 
 const char * g_fragShaderPreamble = R"(
@@ -49,7 +63,7 @@ const char * g_fragShaderPreamble = R"(
 Renderer::Renderer()
 {
     blockReference = GlProgram(
-        { GL_VERTEX_SHADER, { g_vertShaderPreamble, "void main() { gl_Position = matClipFromModel * vec4(0,0,0,1); }" } },
+        { GL_VERTEX_SHADER, { g_vertShaderPreamble, "void main() { setWorldPosition(vec3(0,0,0)); }" } },
         { GL_FRAGMENT_SHADER, { g_fragShaderPreamble, "layout(location = 0) out vec4 f_color; void main() { f_color = vec4(ambient,1); }" } }
     );
 
@@ -75,38 +89,28 @@ void Renderer::render(GlFramebuffer & screen, const View & view, const std::vect
     renderScene(screen, view, objs, lights, false);
 }
 
-static float4x4 matClipFromView(const View & view, float aspect) { return perspectiveMatrixRhGl(view.vfov, aspect, view.nearClip, view.farClip); }
-static float4x4 matViewFromWorld(const View & view) { return view.pose.inverse().matrix(); }
+static float4x4 matClipFromWorld(const View & view, float aspect) { return mul(perspectiveMatrixRhGl(view.vfov, aspect, view.nearClip, view.farClip), view.pose.inverse().matrix()); }
 static float aspectFromFramebuffer(const GlFramebuffer & fb) { auto dims = fb.dimensions(); return (float)dims.x/dims.y; }
 
 void Renderer::renderScene(GlFramebuffer & target, const View & view, const std::vector<Object> & objs, const std::vector<Light> & lights, bool renderDepth)
 {
-    auto clipFromView = matClipFromView(view, aspectFromFramebuffer(target));
-    auto viewFromWorld = matViewFromWorld(view);
+    auto clipFromWorld = matClipFromWorld(view, aspectFromFramebuffer(target));
 
     // Set up lighting UBO
     if (!renderDepth)
     {
         std::vector<uint8_t> buffer(lightingBlock->pack.size);
-        lightingBlock->set(buffer, "ambient", float3(0.1, 0.1, 0.1));
+        lightingBlock->set(buffer, "ambient", float3(0.05f, 0.05f, 0.05f));
         lightingBlock->set(buffer, "eyePos", view.pose.position);
 
         const auto worldFromView = view.pose.matrix();
         const auto shadowTexFromClip = float4x4{ { 0.5f, 0, 0, 0 }, { 0, 0.5f, 0, 0 }, { 0, 0, 0.5f, 0 }, { 0.5f, 0.5f, 0.5f, 1 } };
         for(int i=0; i<2; ++i)
         {
-            // Compute prefix for light attributes
             std::ostringstream ss; ss << "shadowLights[" << i << "]."; auto prefix = ss.str();
-
-            // Compute matrix that goes from view space to biased shadow clip space
-            auto shadowClipFromView = matClipFromView(lights[i].view, aspectFromFramebuffer(shadowBuffer[i]));
-            auto shadowViewFromWorld = matViewFromWorld(lights[i].view);
-            auto shadowTexFromView = mul(shadowTexFromClip, shadowClipFromView, shadowViewFromWorld);
-
-            // Set light values
             lightingBlock->set(buffer, prefix + "color", lights[i].color);
             lightingBlock->set(buffer, prefix + "position", lights[i].view.pose.position);
-            lightingBlock->set(buffer, prefix + "matrix", shadowTexFromView);
+            lightingBlock->set(buffer, prefix + "matrix", mul(shadowTexFromClip, matClipFromWorld(lights[i].view, aspectFromFramebuffer(shadowBuffer[i]))));
             shadowBuffer[i].texture(0).bind(8+i, shadowSampler);
         }
 
@@ -123,8 +127,9 @@ void Renderer::renderScene(GlFramebuffer & target, const View & view, const std:
     for (auto & obj : objs)
     {
         // Set up transform
-        transformBlock->set(tbuffer, "matClipFromModel", mul(clipFromView, viewFromWorld, obj.pose.matrix()));
-        transformBlock->set(tbuffer, "matWorldFromModel", obj.pose.matrix());
+        transformBlock->set(tbuffer, "matClipFromWorld", clipFromWorld);
+        transformBlock->set(tbuffer, "pose.position",    obj.pose.position);
+        transformBlock->set(tbuffer, "pose.orientation", obj.pose.orientation);
         transformUbo.setData(tbuffer, GL_DYNAMIC_DRAW);
 
         // Bind program and render
