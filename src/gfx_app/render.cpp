@@ -5,10 +5,12 @@ const char * g_shaderPreamble = R"(
 
     // Quaternions
     vec4 qmul(vec4 a, vec4 b) { return vec4(a.x*b.w+a.w*b.x+a.y*b.z-a.z*b.y, a.y*b.w+a.w*b.y+a.z*b.x-a.x*b.z, a.z*b.w+a.w*b.z+a.x*b.y-a.y*b.x, a.w*b.w-a.x*b.x-a.y*b.y-a.z*b.z); }  
-    vec3 qxdir(vec4 q) { return vec3(q.w*q.w+q.x*q.x-q.y*q.y-q.z*q.z, (q.x*q.y+q.z*q.w)*2, (q.z*q.x-q.y*q.w)*2); } 
-    vec3 qydir(vec4 q) { return vec3((q.x*q.y-q.z*q.w)*2, q.w*q.w-q.x*q.x+q.y*q.y-q.z*q.z, (q.y*q.z+q.x*q.w)*2); } 
-    vec3 qzdir(vec4 q) { return vec3((q.z*q.x+q.y*q.w)*2, (q.y*q.z-q.x*q.w)*2, q.w*q.w-q.x*q.x-q.y*q.y+q.z*q.z); } 
-    vec3 qtransform(vec4 q, vec3 v) { return qxdir(q)*v.x + qydir(q)*v.y + qzdir(q)*v.z; }
+    vec3 qtransform(vec4 q, vec3 v) { 
+        vec4 a = q*q, b = q*q.yzwx; vec2 c = q.xy*q.zw;
+        return vec3(a.w+a.x-a.y-a.z, (b.x+b.z)*2, (c.x-c.y)*2)*v.x 
+             + vec3((b.x-b.z)*2, a.w-a.x+a.y-a.z, (b.y+b.w)*2)*v.y 
+             + vec3((c.x+c.y)*2, (b.y-b.w)*2, a.w-a.x-a.y+a.z)*v.z; 
+    }
 
     // Poses
     struct Pose { vec3 position; vec4 orientation; };
