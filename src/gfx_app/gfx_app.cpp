@@ -15,7 +15,7 @@ template<class T> std::shared_ptr<T> shared(T && r) { return std::make_shared<T>
 using namespace cu;
 
 struct BasicVertex { float3 pos, norm; float2 uv; };
-struct NormalVertex { float3 pos, norm, tan, bitan; float2 uv; };
+struct NormalVertex { float3 pos; float4 ori; float2 uv; };
 struct ColorVertex { float3 pos; ubyte4 col; };
 
 #define FIELD(n) f(#n, o.n)
@@ -28,8 +28,8 @@ TriMesh<BasicVertex,uint8_t> basicBox(const float3 & dims) { return boxMesh(dims
 
 TriMesh<NormalVertex, uint8_t> normalBox(const float3 & dims)
 { 
-    auto mesh = boxMesh(dims, &NormalVertex::pos, &NormalVertex::norm, &NormalVertex::uv);
-    computeTangents(mesh.verts, mesh.tris, &NormalVertex::tan, &NormalVertex::bitan, &NormalVertex::pos, &NormalVertex::uv);
+    auto mesh = boxMesh<NormalVertex,float>(dims, &NormalVertex::pos, nullptr, &NormalVertex::uv);
+    computeOrientations(mesh.verts, mesh.tris, &NormalVertex::ori, &NormalVertex::pos, &NormalVertex::uv);
     return mesh;
 }
 
@@ -41,7 +41,7 @@ TriMesh<ColorVertex,uint8_t> colorBox(const float3 & dims, const ubyte4 & col)
 }
 
 template<class I> GlMesh glMesh(const TriMesh<BasicVertex,I> & mesh) { return GlMesh(mesh.verts, mesh.tris, &BasicVertex::pos, &BasicVertex::norm, nullptr, nullptr, &BasicVertex::uv); }
-template<class I> GlMesh glMesh(const TriMesh<NormalVertex, I> & mesh) { return GlMesh(mesh.verts, mesh.tris, &NormalVertex::pos, &NormalVertex::norm, &NormalVertex::tan, &NormalVertex::bitan, &NormalVertex::uv); }
+template<class I> GlMesh glMesh(const TriMesh<NormalVertex,I> & mesh) { return GlMesh(mesh.verts, mesh.tris, &NormalVertex::pos, &NormalVertex::ori, &NormalVertex::uv); }
 template<class I> GlMesh glMesh(const TriMesh<ColorVertex,I> & mesh) { return GlMesh(mesh.verts, mesh.tris, &ColorVertex::pos, &ColorVertex::col); }
 
 int main(int argc, char * argv[])
@@ -82,21 +82,15 @@ int main(int argc, char * argv[])
             {GL_VERTEX_SHADER, {g_shaderPreamble, g_vertShaderPreamble, R"(
                 uniform PerObject { Pose pose; vec3 emission; };
                 layout(location = 0) in vec3 v_position;
-                layout(location = 1) in vec3 v_normal;
-                layout(location = 2) in vec3 v_tangent;
-                layout(location = 3) in vec3 v_bitangent;
-                layout(location = 4) in vec2 v_texCoord;
+                layout(location = 1) in vec4 v_orientation;
+                layout(location = 2) in vec2 v_texCoord;
                 out vec3 position;
-                out vec3 normal;
-                out vec3 tangent;
-                out vec3 bitangent;
+                out vec4 orientation;
                 out vec2 texCoord;
                 void main()
                 {
                     position    = transformCoord(pose, v_position);
-                    normal      = transformVector(pose, v_normal);
-                    tangent     = transformVector(pose, v_tangent);
-                    bitangent   = transformVector(pose, v_bitangent);
+                    orientation = qmul(pose.orientation, v_orientation);
                     texCoord    = v_texCoord;
                     setWorldPosition(position);
                 }
@@ -106,15 +100,13 @@ int main(int argc, char * argv[])
                 layout(binding = 0) uniform sampler2D u_texAlbedo;
                 layout(binding = 1) uniform sampler2D u_texNormal;
                 in vec3 position;
-                in vec3 normal;
-                in vec3 tangent;
-                in vec3 bitangent;
+                in vec4 orientation;
                 in vec2 texCoord;
                 layout(location = 0) out vec4 f_color;   
                 void main()
                 {
                     vec3 tsNormal = texture(u_texNormal, texCoord).xyz*2 - 1;
-                    vec3 vsNormal = normalize(normalize(tangent) * tsNormal.x + normalize(bitangent) * tsNormal.y + normalize(normal) * tsNormal.z);
+                    vec3 vsNormal = normalize(qtransform(orientation, tsNormal));
                     vec4 albedo = texture(u_texAlbedo, texCoord);
                     f_color = vec4(emission + albedo.rgb * computeLighting(position, vsNormal), albedo.a);
                 }
