@@ -2,5 +2,9 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="..\src\gfx_app\gfx_app.cpp" />
+    <ClCompile Include="..\src\gfx_app\tinydraw.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\gfx_app\tinydraw.h" />
   </ItemGroup>
 </Project>
