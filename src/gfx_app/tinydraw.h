@@ -35,5 +35,15 @@ public:
     void Use(const uint8_t * perObjectData) const;
 
     size_t GetPerObjectSize() const { return perObjectSize; }
-    template<int N> void SetPerObjectParameter(uint8_t * perObjectData, const std::string & name, const cu::vec<float,N> & v) { for (auto & param : parameters) if (param.parameterName == name) for (int i = 0; i<N; ++i) param.Set(perObjectData + param.offset, i, v[i]); }
+    template<int N> void SetPerObjectParameter(uint8_t * perObjectData, const std::string & name, const cu::vec<float,N> & v) const { for (auto & param : parameters) if (param.parameterName == name) for (int i = 0; i<N; ++i) param.Set(perObjectData + param.offset, i, v[i]); }
+};
+
+struct DrawList
+{
+    struct Object { const Material * material; size_t paramOffset; };
+    std::vector<Object> objects;
+    std::vector<uint8_t> objectData;
+
+    void AddObject(const Material * material) { objects.push_back({ material, objectData.size() }); objectData.resize(objectData.size() + material->GetPerObjectSize()); }
+    template<class T> void SetParam(const std::string & name, const T & value) { objects.back().material->SetPerObjectParameter(objectData.data() + objects.back().paramOffset, name, value); }
 };

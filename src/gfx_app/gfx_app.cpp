@@ -2,6 +2,19 @@
 
 using namespace cu;
 
+void RenderScene(const DrawList & drawList)
+{
+    for (auto & obj : drawList.objects)
+    {
+        obj.material->Use(drawList.objectData.data() + obj.paramOffset);
+        glBegin(GL_TRIANGLES);
+        glVertexAttrib3f(0, -0.5f, -0.5f, 0);
+        glVertexAttrib3f(0, 0.0f, +0.5f, 0);
+        glVertexAttrib3f(0, +0.5f, -0.5f, 0);
+        glEnd();
+    }
+}
+
 int main(int argc, char * argv[])
 {
     if (SDL_Init(SDL_INIT_EVERYTHING) == -1) return -1;
@@ -37,11 +50,6 @@ int main(int argc, char * argv[])
         return -1;
     }
 
-    std::vector<uint8_t> perObjectData;
-    perObjectData.resize(m.GetPerObjectSize());
-    m.SetPerObjectParameter(perObjectData.data(), "translate", float3(0.3f, 0, 0));
-    m.SetPerObjectParameter(perObjectData.data(), "color", float4(1, 0.5f, 0, 1));
-
     bool quit = false;
     while (!quit)
     {
@@ -56,15 +64,23 @@ int main(int argc, char * argv[])
             }
         }
 
+        DrawList drawList;
+
+        drawList.AddObject(&m);
+        drawList.SetParam("translate", float3(0.3f, 0, 0));
+        drawList.SetParam("color", float4(1, 0.5f, 0, 1));
+
+        drawList.AddObject(&m);
+        drawList.SetParam("translate", float3(-0.2f, -0.2f, 0));
+        drawList.SetParam("color", float4(0, 0, 1, 1));
+
+        drawList.AddObject(&m);
+        drawList.SetParam("color", float4(0, 1, 0, 1));
+        // Note that although we do not specify translate, there is no "bleeding" of state from the previous object
+
         glClear(GL_COLOR_BUFFER_BIT);
 
-        m.Use(perObjectData.data());
-
-        glBegin(GL_TRIANGLES);
-        glVertexAttrib3f(0, -0.5f, -0.5f, 0);
-        glVertexAttrib3f(0,  0.0f, +0.5f, 0);
-        glVertexAttrib3f(0, +0.5f, -0.5f, 0);
-        glEnd();
+        RenderScene(drawList);
 
         SDL_GL_SwapWindow(win);
     }
