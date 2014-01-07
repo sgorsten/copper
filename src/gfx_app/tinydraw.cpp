@@ -1,5 +1,26 @@
 #include "tinydraw.h"
 
+void Mesh::DrawQuads() const
+{
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+    glDrawArrays(GL_QUADS, 0, 4);
+}
+
+void Mesh::SetVertices(const void * vertices, size_t stride, size_t count)
+{
+    glGenBuffers(1, &vertexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+    glBufferData(GL_ARRAY_BUFFER, stride*count, vertices, GL_STATIC_DRAW);
+    vertexStride = stride;
+    vertexCount = count;
+}
+
+void Mesh::SetAttribute(int index, size_t channels, const void * pointer)
+{
+    glEnableVertexAttribArray(index);
+    glVertexAttribPointer(index, channels, GL_FLOAT, GL_FALSE, vertexStride, pointer);
+}
+
 void Material::FreeObjects()
 {
     if (program) glDeleteProgram(program);
@@ -29,20 +50,24 @@ void Material::Validate()
     if (status == GL_FALSE) throw std::runtime_error("Invalid material - GLSL compile error");
 
     if (!program) program = glCreateProgram();
+    for (auto & attrib : attributes) glBindAttribLocation(program, attrib.index, attrib.attributeName.c_str());
     glAttachShader(program, vertexShader);
     glAttachShader(program, fragmentShader);
     glLinkProgram(program);
     glGetProgramiv(program, GL_LINK_STATUS, &status);
     if (status == GL_FALSE) throw std::runtime_error("Invalid material - GLSL link error");
 
-    perObjectSize = 0;
+    // Validate that all requested attributes are present in shader
+    for (auto & attrib : attributes)
+    {
+        if(glGetAttribLocation(program, attrib.attributeName.c_str()) != attrib.index) throw std::runtime_error("Invalid material - Missing program attribute: " + attrib.attributeName);
+    }
+
+    // Validate that all requested parameters have an associated uniform in shader
     for (auto & param : parameters)
     {
-        auto loc = glGetUniformLocation(program, param.uniformName.c_str());
-        if (loc == -1) throw std::runtime_error("Invalid material - Parameter has no matching uniform in shader");
-        param.location = loc;
-        param.offset = perObjectSize;
-        perObjectSize += sizeof(float) * param.channels;
+        param.location = glGetUniformLocation(program, param.uniformName.c_str());
+        if (param.location == -1) throw std::runtime_error("Invalid material - Missing program uniform: " + param.uniformName);
     }
 
     valid = true;

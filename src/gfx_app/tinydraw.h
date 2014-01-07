@@ -8,13 +8,29 @@
 
 #include <cu/math.h>
 
+class Mesh
+{
+    GLuint vertexBuffer, vertexStride, vertexCount;
+public:
+    Mesh() : vertexBuffer(), vertexStride(), vertexCount() {}
+
+    void SetVertices(const void * vertices, size_t stride, size_t count);
+    void SetAttribute(int index, size_t channels, const void * pointer);
+    template<class T> void SetVertices(const std::vector<T> & vertices) { SetVertices(vertices.data(), sizeof(T), vertices.size()); }
+    template<class T, int N> void SetAttribute(int index, const cu::vec<float,N> T::*field) { SetAttribute(index, N, &(reinterpret_cast<const T *>(0)->*field)); }
+
+    void DrawQuads() const;
+};
+
 class Material
 {
+    struct Attribute { size_t index; std::string attributeName; };
     struct Parameter { std::string parameterName, uniformName; size_t channels; ptrdiff_t offset; GLint location; 
         void Set(uint8_t * data, size_t index, float value) const { if (index < channels) reinterpret_cast<float *>(data)[index] = value; }
     };
     std::string vertexShaderSource, fragmentShaderSource;
     std::vector<Parameter> parameters; size_t perObjectSize;
+    std::vector<Attribute> attributes;
 
     GLuint vertexShader, fragmentShader, program;
     bool valid;
@@ -28,8 +44,8 @@ public:
 
     void SetVertexShaderSource(std::string source) { vertexShaderSource = move(source); valid = false; }
     void SetFragmentShaderSource(std::string source) { fragmentShaderSource = move(source); valid = false; }
-    void AddPerObjectParameter(std::string name, size_t channels, std::string uniformName) { parameters.push_back({ move(name), move(uniformName), channels, 0, -1 }); valid = false; }
-
+    void AddVertexAttribute(size_t index, std::string attributeName) { attributes.push_back({index, attributeName}); valid = false; }
+    void AddPerObjectParameter(std::string name, size_t channels, std::string uniformName) { parameters.push_back({ move(name), move(uniformName), channels, perObjectSize, -1 }); perObjectSize += sizeof(float) * channels; valid = false; }
     void Validate();
 
     void Use(const uint8_t * perObjectData) const;
@@ -40,10 +56,10 @@ public:
 
 struct DrawList
 {
-    struct Object { const Material * material; size_t paramOffset; };
+    struct Object { const Material * material; const Mesh * mesh; size_t paramOffset; };
     std::vector<Object> objects;
     std::vector<uint8_t> objectData;
 
-    void AddObject(const Material * material) { objects.push_back({ material, objectData.size() }); objectData.resize(objectData.size() + material->GetPerObjectSize()); }
+    void AddObject(const Material * material, const Mesh  * mesh) { objects.push_back({ material, mesh, objectData.size() }); objectData.resize(objectData.size() + material->GetPerObjectSize()); }
     template<class T> void SetParam(const std::string & name, const T & value) { objects.back().material->SetPerObjectParameter(objectData.data() + objects.back().paramOffset, name, value); }
 };

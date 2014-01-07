@@ -7,11 +7,7 @@ void RenderScene(const DrawList & drawList)
     for (auto & obj : drawList.objects)
     {
         obj.material->Use(drawList.objectData.data() + obj.paramOffset);
-        glBegin(GL_TRIANGLES);
-        glVertexAttrib3f(0, -0.5f, -0.5f, 0);
-        glVertexAttrib3f(0, 0.0f, +0.5f, 0);
-        glVertexAttrib3f(0, +0.5f, -0.5f, 0);
-        glEnd();
+        obj.mesh->DrawQuads();
     }
 }
 
@@ -24,31 +20,59 @@ int main(int argc, char * argv[])
 
     if (glewInit() != GLEW_OK) return -1;
 
-    Material m;
-    m.SetVertexShaderSource(
-        "#version 330\n"
-        "uniform vec3 u_translate;\n"
-        "in vec3 v_position;\n"
-        "void main() { gl_Position = vec4(v_position + u_translate, 1); }"
-    );
-    m.SetFragmentShaderSource(
-        "#version 330\n"
-        "uniform vec4 u_color;\n"
-        "out vec4 f_color;\n"
-        "void main() { f_color = u_color; }"
-    );
-    m.AddPerObjectParameter("translate", 3, "u_translate");
-    m.AddPerObjectParameter("color", 4, "u_color");
+    // Create a material
 
+    Material mat;
+    mat.SetVertexShaderSource(R"(#version 330
+        uniform vec3 u_translate;
+        uniform vec4 u_color;
+
+        in vec3 v_position;
+        in vec3 v_color;
+        out vec3 color;
+
+        void main() 
+        { 
+            color = v_color * u_color.rgb;
+            gl_Position = vec4(v_position + u_translate, 1);
+        })"
+    );
+    mat.SetFragmentShaderSource(R"(#version 330
+        in vec3 color;
+        out vec4 f_color;
+        void main()
+        {
+            f_color = vec4(color,1); 
+        })"
+    );
+    mat.AddVertexAttribute(0, "v_position");
+    mat.AddVertexAttribute(1, "v_color");
+    mat.AddPerObjectParameter("translate", 3, "u_translate");
+    mat.AddPerObjectParameter("color", 4, "u_color");
     try
     {
-        m.Validate();
+        mat.Validate();
     }
-    catch (const std::exception & e) 
+    catch (const std::exception & e)
     {
-        std::cerr << e.what() << std::endl; 
+        std::cerr << e.what() << std::endl;
         return -1;
     }
+
+    // Create a mesh
+
+    struct ColorVertex { float3 position,color; };
+    const std::vector<ColorVertex> verts = {
+        { { -0.5f, -0.5f, 0 }, { 1, 0, 0 } },
+        { { +0.5f, -0.5f, 0 }, { 1, 1, 0 } },
+        { { +0.5f, +0.5f, 0 }, { 0, 1, 0 } },
+        { { -0.5f, +0.5f, 0 }, { 0, 0, 1 } },
+    };
+
+    Mesh mesh;
+    mesh.SetVertices(verts);
+    mesh.SetAttribute(0, &ColorVertex::position);
+    mesh.SetAttribute(1, &ColorVertex::color);
 
     bool quit = false;
     while (!quit)
@@ -66,22 +90,20 @@ int main(int argc, char * argv[])
 
         DrawList drawList;
 
-        drawList.AddObject(&m);
+        drawList.AddObject(&mat, &mesh);
         drawList.SetParam("translate", float3(0.3f, 0, 0));
         drawList.SetParam("color", float4(1, 0.5f, 0, 1));
 
-        drawList.AddObject(&m);
+        drawList.AddObject(&mat, &mesh);
         drawList.SetParam("translate", float3(-0.2f, -0.2f, 0));
         drawList.SetParam("color", float4(0, 0, 1, 1));
 
-        drawList.AddObject(&m);
+        drawList.AddObject(&mat, &mesh);
         drawList.SetParam("color", float4(0, 1, 0, 1));
         // Note that although we do not specify translate, there is no "bleeding" of state from the previous object
 
         glClear(GL_COLOR_BUFFER_BIT);
-
         RenderScene(drawList);
-
         SDL_GL_SwapWindow(win);
     }
 
